@@ -1,0 +1,68 @@
+NAME
+
+Botox - simple perl OO beauty-shot.
+
+SYNOPSIS
+
+Botox предназначен для упрощения конструирования классов и объектов.
+
+  use Botox qw(new prepare set_multi AUTOLOAD);
+  my $object = new Parent(qw(name adress_rw surname_ro));
+DESCRIPTION
+
+Botox - очень простой модуль-подсластитель по мотивам Moose, но не использующий слишком сильной магии. Здесь есть лишь пара легких трюков, которым можно запросто научится за полчасика.
+
+Класс создается так:
+
+
+ {{{package Parent;     
+   use Botox qw(new prepare set_multi AUTOLOAD); # now you KNOW how mach is it cost.
+   my $object = new Parent(qw(name adress_rw surname_ro));
+   1;
+ }}}
+Экземпляр объекта создается так:
+
+
+ {{{package Child;
+   my $foo = new Parent;
+   $foo->set_multi(name=>'Dolly',adress=>'Scotland, Newerland');
+ }}}
+Свойства, описаные в конструкторе класса, могут наследоваться и иметь права доступа. Право доступа указывается в имени свойства конструкцией bar + '_ro' или '_rw'(default). Право на доступ по чтению-записи является правилом по умолчанию, таким образом его указание не обязательно. Напротив, ограничение прав ``ro - только чтение'' требует явного указания этого факта. Далее для возможности работы с данным свойством НА ЗАПИСЬ из экземпляра объекта следует создать в классе акцессор:
+
+   #$foo->surname('sheep'); # wrong! surname is RO properties, create acessor in Parent instead
+   # - need in Parent -
+    sub set_surname {
+    my $self = shift;
+    $self->surname(shift) if @_;
+    }
+   # - then in Child - 
+    $foo->set_surname('sheep'); # right! you are create acessor.
+В Botox свойства, подобно методам, наследуются. Создавая класс с двумя и более предками следует внимательно отнестись к очередности указания родителей класса. Левый родитель получает приоритет при наличии одинаковых свойств.
+
+Для облегчения инициализации свойств экземпляра в Botox имеется метод set_multi (только для RW-свойств)
+
+
+        $foo->set_multi(name=>'Dolly',adress=>'Scotland, Newerland');
+Метод prepare может быть вызван для создания свойств вместо передачи списка методу new
+
+  {{{package Parent;    
+    use Botox qw(new prepare set_multi AUTOLOAD);
+    my $object = new Parent;
+        $object->prepare(qw(name adress_rw surname_ro));
+        1;
+  }}}
+Использование AUTOLOAD объясняется желанием сэкономить нервы, выдавая нефатальное сообщение об отсутствии свойства или метода в классе. ИМХО! Фатализм и повышеная смертность приложений при малейших ошибках является ошибкой проектирования системы.
+
+AUTOR
+
+Meettya <meettya@gmail.com>
+
+BUGS
+
+Вероятно даже в таком объеме кода могут быть баги. Пожалуйста, сообщайте мне об их наличии по указаному e-mail или любым иным способом.
+
+SEE ALSO
+
+COPYRIGHT
+
+Moscow, fall 2009.

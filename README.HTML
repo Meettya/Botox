@@ -1,0 +1,118 @@
+<?xml version="1.0" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>Botox</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link rev="made" href="mailto:root@omen.apple.com" />
+</head>
+
+<body style="background-color: white">
+
+<p><a name="__index__"></a></p>
+<!-- INDEX BEGIN -->
+
+<ul>
+
+	<li><a href="#name">NAME</a></li>
+	<li><a href="#synopsis">SYNOPSIS</a></li>
+	<li><a href="#description">DESCRIPTION</a></li>
+	<li><a href="#autor">AUTOR</a></li>
+	<li><a href="#bugs">BUGS</a></li>
+	<li><a href="#see_also">SEE ALSO</a></li>
+	<li><a href="#copyright">COPYRIGHT</a></li>
+</ul>
+<!-- INDEX END -->
+
+<hr />
+<p>
+</p>
+<hr />
+<h1><a name="name">NAME</a></h1>
+<p>Botox - simple perl OO beauty-shot.</p>
+<p>
+</p>
+<hr />
+<h1><a name="synopsis">SYNOPSIS</a></h1>
+<p>Botox предназначен для упрощения конструирования классов и объектов.</p>
+<pre>
+  use Botox qw(new prepare set_multi AUTOLOAD);
+  my $object = new Parent(qw(name adress_rw surname_ro));</pre>
+<p>
+</p>
+<hr />
+<h1><a name="description">DESCRIPTION</a></h1>
+<p>Botox - очень простой модуль-подсластитель по мотивам Moose, но не использующий слишком сильной магии.
+Здесь есть лишь пара легких трюков, которым можно запросто научится за полчасика.</p>
+<p>Класс создается так:
+</p>
+<pre>
+
+ {{{package Parent;     
+   use Botox qw(new prepare set_multi AUTOLOAD); # now you KNOW how mach is it cost.
+   my $object = new Parent(qw(name adress_rw surname_ro));
+   1;
+ }}}</pre>
+<p>Экземпляр объекта создается так:
+</p>
+<pre>
+
+ {{{package Child;
+   my $foo = new Parent;
+   $foo-&gt;set_multi(name=&gt;'Dolly',adress=&gt;'Scotland, Newerland');
+ }}}</pre>
+<p>Свойства, описаные в конструкторе класса, могут наследоваться и иметь права доступа.
+Право доступа указывается в имени свойства конструкцией bar + '_ro' или '_rw'(default).
+Право на доступ по чтению-записи является правилом по умолчанию, таким образом  его указание не обязательно.
+Напротив, ограничение прав ``ro - только чтение'' требует явного указания этого факта.
+Далее для возможности работы с данным свойством НА ЗАПИСЬ из экземпляра объекта следует создать в классе акцессор:</p>
+<pre>
+   #$foo-&gt;surname('sheep'); # wrong! surname is RO properties, create acessor in Parent instead
+   # - need in Parent -
+    sub set_surname {
+    my $self = shift;
+    $self-&gt;surname(shift) if @_;
+    }
+   # - then in Child - 
+    $foo-&gt;set_surname('sheep'); # right! you are create acessor.</pre>
+<p>В Botox свойства, подобно методам, <strong>наследуются</strong>. Создавая класс с двумя и более предками следует внимательно отнестись к очередности указания родителей класса. Левый родитель получает приоритет при наличии одинаковых свойств.</p>
+<p>Для облегчения инициализации свойств экземпляра в Botox имеется метод set_multi (только для RW-свойств)
+</p>
+<pre>
+
+        $foo-&gt;set_multi(name=&gt;'Dolly',adress=&gt;'Scotland, Newerland');</pre>
+<p>Метод prepare может быть вызван для создания свойств вместо передачи списка методу new</p>
+<pre>
+  {{{package Parent;    
+    use Botox qw(new prepare set_multi AUTOLOAD);
+    my $object = new Parent;
+        $object-&gt;prepare(qw(name adress_rw surname_ro));
+        1;
+  }}}</pre>
+<p>Использование AUTOLOAD объясняется желанием сэкономить нервы, выдавая нефатальное сообщение об отсутствии свойства или метода в классе.
+ИМХО! Фатализм и повышеная смертность приложений при малейших ошибках является ошибкой проектирования системы.</p>
+<p>
+</p>
+<hr />
+<h1><a name="autor">AUTOR</a></h1>
+<p>Meettya &lt;<em><a href="mailto:meettya@gmail.com">meettya@gmail.com</a></em>&gt;</p>
+<p>
+</p>
+<hr />
+<h1><a name="bugs">BUGS</a></h1>
+<p>Вероятно даже в таком объеме кода могут быть баги. Пожалуйста, сообщайте мне об их наличии по указаному e-mail или любым иным способом.</p>
+<p>
+</p>
+<hr />
+<h1><a name="see_also">SEE ALSO</a></h1>
+<p>
+</p>
+<hr />
+<h1><a name="copyright">COPYRIGHT</a></h1>
+<p><strong>Moscow</strong>, fall 2009.
+
+</p>
+
+</body>
+
+</html>
