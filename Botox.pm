@@ -4,11 +4,12 @@
 
 use strict;
 
-our $VERSION = 0.1.2;
+our $VERSION = 0.4.1;
 
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(new prepare set_multi AUTOLOAD);
+our %EXPORT_TAGS = ( all => [qw(new prepare set_multi AUTOLOAD)]);
 
 use autouse 'Carp' => qw(carp croak);
 
