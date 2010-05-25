@@ -1,6 +1,4 @@
-#!/usr/bin/perl -w
-
-{{{package Botox;
+package Botox;
 
 use strict;
 
@@ -15,7 +13,7 @@ use autouse 'Carp' => qw(carp croak);
 
 sub new {
     my $invocant = shift;
-    my $self = bless({}, ref $invocant || $invocant);
+    my $self = bless( {}, ref $invocant || $invocant );
     $self->prepare(@_) if @_;
     return $self;
 }
@@ -23,14 +21,16 @@ sub new {
 sub prepare {
 	my $class = ref shift;
 	foreach (@_) {
-		my ($field,$ro) = /^(.+)_(r[ow])$/?($1,$2):($_,'');
-		my $slot = "$class\::$field"; #inject sub to invocant package space
-		no strict "refs";          # So symbolic ref to typeglob works.
+		my ( $field,$ro ) = /^(.+)_r[ow]$/ ? ( $1, 1 ) : $_ ;
+		my $slot = "$class\::$field"; 	#inject sub to invocant package space
+		no strict "refs";          		# So symbolic ref to typeglob works.
 		*$slot = sub {
 			my $self = shift;
-			if (@_) {
-				if(('ro' eq $ro) && !(((caller)[0] && ref $self eq (caller)[0]) || ((caller 1)[0] && ref $self eq (caller 1)[0]))){
+			if ( @_ ) {
+				
+				if( $ro && !( (caller)[0] && ref $self eq (caller)[0] or (caller 1)[0] && ref $self eq (caller 1)[0]) ){
 					carp "Can`t change RO properties \"$field\" in object ".ref $self;}
+				
 				else {$self->{$slot} = shift;}
 			}
 			return $self->{$slot};
@@ -40,27 +40,23 @@ sub prepare {
 
 
 sub set_multi  {
-	my $self = shift;
-	my %var = @_;	
-	no strict "refs";
-	foreach (keys %var) {
-		$self->$_($var{$_})	
-	}
+	my ( $self, %var ) = @_ ;
+	$self->$_( $var{$_} ) for keys %var;
 }
 
 
 sub AUTOLOAD {
-my $self = shift;
-croak "$self not object" unless ref $self;
-
-my $name = our $AUTOLOAD;
-return if $name =~ /::DESTROY$/;
-($name) = $name =~ /::(.+)$/;
-carp "Haven`t properties \"$name\" in object ".ref $self;
+	my $self = shift;
+	croak "$self not object" unless ref $self;
+	
+	my $name = our $AUTOLOAD;
+	return if $name =~ /::DESTROY$/;
+	($name) = $name =~ /::(.+)$/;
+	carp "Haven`t properties \"$name\" in object ".ref $self;
 }
 
 1;
-}}}
+
 
 __END__
 
