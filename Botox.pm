@@ -14,7 +14,7 @@ sub new{
     my $self = bless( {}, ref $invocant || $invocant ); # Object or class name  
    	&$error_stack( $self );
    	&$prototyping( $self );
-	return $self;	
+	return $self;
 }
 
 $error_stack = sub{
@@ -28,13 +28,13 @@ $prototyping = sub{
 	
 	no strict 'refs';
 	# exit if havent prototype
-	return unless ( ${$proto} && ref ${$proto} eq 'HASH' ); 	
+	return unless ( ${$proto} && ref ${$proto} eq 'HASH' );
 	# or if we are having prototype - use it !		
 	for ( keys %${$proto} ) {
 		&$prepare( $self, $_ );
 		my $field = /^(.+)_r[ow]$/ ?  $1 : $_ ;
 		$self->$field( ${$proto}->{$_} )
-	}	
+	}
 };
 
 $prepare = sub{
@@ -47,16 +47,16 @@ $prepare = sub{
 		next if ( *$slot{CODE} );		# don`t redefine ours closures
 		
 		if ( $field eq 'error_stack' ){ # create error_stack
-			*$slot = sub {					
+			*$slot = sub {
 				my $self = shift;
 				if ( caller eq ref $self || caller eq __PACKAGE__ ){
 						push @{$self->{$slot}}, shift;
 					}
-				return $self->{$slot};		
+				return $self->{$slot};
 			};
 		}
 		else{							# or create closures
-			*$slot = sub {					
+			*$slot = sub {
 				my $self = shift;
 				
 				return $self->{$slot} unless ( @_ );
