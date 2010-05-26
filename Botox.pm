@@ -2,23 +2,23 @@ package Botox;
 
 use strict;
 
-our $VERSION = 0.8.2;
+our $VERSION = 0.8.4;
 
 require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT_OK = qw(new prepare set_multi AUTOLOAD);
-our %EXPORT_TAGS = ( all => [qw(new prepare set_multi AUTOLOAD)]);
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw( new prepare set_multi AUTOLOAD );
+our %EXPORT_TAGS = ( all => [qw( new prepare set_multi AUTOLOAD )]);
 
-use autouse 'Carp' => qw(carp croak);
+use autouse 'Carp' => qw( carp croak );
 
-sub new {
+sub new{
     my $invocant = shift;
     my $self = bless( {}, ref $invocant || $invocant );
-    $self->prepare(@_) if @_;
+    $self->prepare( @_ ) if @_;
     return $self;
 }
 
-sub prepare {
+sub prepare{
 	my $class = ref shift;
 	foreach ( @_ ) {
 		my ( $field, $is_ro ) = /^(.+)_r[ow]$/ ? ( $1, 1 ): $_;
@@ -27,9 +27,9 @@ sub prepare {
 		*$slot = sub {
 			my $self = shift;
 			if ( @_ ) {				
-				if ( $is_ro && ! grep { defined $_ && 
-						( ref $self eq $_ || __PACKAGE__ eq $_  )} 
-							( (caller)[0], (caller 1)[0] ) ){
+				if ( $is_ro && ! grep { defined $_ and 
+						ref $self eq $_ || __PACKAGE__ eq $_ } 
+							( caller, caller 1 ) ){
 					carp "Can`t change RO properties \"$field\" in object ".ref $self;
 					undef;}
 				else {
@@ -42,13 +42,13 @@ sub prepare {
 }
 
 
-sub set_multi  {
+sub set_multi{
 	my ( $self, %var ) = @_ ;
 	$self->$_( $var{$_} ) for keys %var;
 }
 
 
-sub AUTOLOAD {
+sub AUTOLOAD{
 	my $self = shift;
 	croak "$self not object" unless ref $self;
 	
@@ -56,22 +56,24 @@ sub AUTOLOAD {
 	return if $name =~ /::DESTROY$/;
 	($name) = $name =~ /::(.+)$/;
 		
-	# make autovivification object property from 'our init' class variable 
-	no strict 'refs';
-	my $concealed = ${( ref $self )."\::init"};
+	# make autovivification object property from 'our prototype' class variable 
+	my $proto;
+	{ 	
+		no strict 'refs';
+		$proto = ${( ref $self )."\::prototype"};
+	}
 	
 	# and track RO property, of course
-	if( ref $concealed eq 'HASH' &&
-					grep { exists $concealed->{$name.$_} } ('','_rw','_ro') ){
-						
-			my $suff = exists $concealed->{$name.'_ro'} ? '_ro' : '';
+	if( ref $proto eq 'HASH' &&
+					grep { exists $proto->{$name.$_} } ('','_rw','_ro') ){
+			my $suff = exists $proto->{$name.'_ro'} ? '_ro' : '';
 			$self->prepare($name.$suff);
-			my $value = shift || $concealed->{$name.$suff};
+			my $value = shift || $proto->{$name.$suff};
 			$self->$name($value);
 			return $value;
 	}
-	# or we are REALY don`t have property
-	carp "Haven`t property \"$name\" in object ".ref $self;
+	# or we are REALY don`t have method or property
+	carp "Haven`t \"$name\" in object ".ref $self;
 	undef;
 }
 
@@ -88,18 +90,44 @@ __END__
 
 Botox - simple perl OO beauty-shot.
 
+=head1 VERSION
+
+B<$VERSION 0.8.4>
+
 =head1 SYNOPSIS
 
-Botox предназначен для упрощения конструирования классов и объектов.
+Botox предназначен для упрощения конструирования классов и объектов, представляя из себя абстрактную фабрику.
 
-  use Botox qw(new prepare set_multi AUTOLOAD);
-  my $object = new Parent(qw(name adress_rw surname_ro));
+  package Parent;
+  use Botox qw(:all); # imported ( new prepare set_multi AUTOLOAD )
+  our $prototype = { 'prop1_ro' => 1.5 , 'prop2' => 2_000_000 }; # default properties for ANY object of `Parent` class
 
 
 =head1 DESCRIPTION
 
-Botox - очень простой модуль-подсластитель по мотивам Moose, но не использующий слишком сильной магии.
-Здесь есть лишь пара легких трюков, которым можно запросто научится за полчасика.
+Botox - очень простой модуль-подсластитель по мотивам Moose, но не использующий слишком сильной магии, ну почти не использующий.
+Его цель - автоматизация конструирования объектов и упрощение синтаксиса ОО.
+
+Класс создается так:
+   
+   {package Parent;	
+	use Botox qw(:all);
+	our $prototype = { 'prop1_ro' => 1.5 , 'prop2' => 2_000_000 };
+	sub show_prop1{
+   		my ( $self ) = @_;
+   		return $self->prop1;
+	}
+	1;
+   }
+
+Экземпляр объекта создается так:
+
+   {package Child;
+	my $foo = new Parent;
+	print $foo->show_prop1;
+	
+   {
+
 
 Класс создается так:
 	
