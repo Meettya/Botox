@@ -2,40 +2,42 @@ package Botox;
 
 use strict;
 
-our $VERSION = 0.8.4;
+our $VERSION = 0.9.1;
 
-require Exporter;
-our @ISA = qw( Exporter );
-our @EXPORT_OK = qw( new  );
+use Exporter 'import';
+our @EXPORT_OK = qw(new);
 
-use autouse 'Carp' => qw( carp croak );
+my ( $prepare, $prototyping, $error_stack );
 
 sub new{
     my $invocant = shift;
     my $self = bless( {}, ref $invocant || $invocant ); # Object or class name  
-   	Botox::prototyping($self);
+   	&$error_stack( $self );
+   	&$prototyping( $self );
 	return $self;	
 }
 
-sub prototyping {
-	my ( $proto, $self ) = ( undef, @_ );
-	
-	{ # just to create $proto
-		no strict 'refs';
-		$proto = ${( ref $self )."\::prototype"};
-	}
-	
-	# if we are having prototype - use it !
-	if( ref $proto eq 'HASH' ){		
-		for ( keys %$proto ) {
-			Botox::prepare( $self, $_ );
-			my $field = /^(.+)_r[ow]$/ ?  $1 : $_ ;
-			$self->$field( $proto->{$_} )
-		}
-	}
+$error_stack = sub{
+	my $self = shift;
+	&$prepare( $self, 'error_stack_ro' );
 };
 
-sub prepare{
+$prototyping = sub{
+	my $self = shift;
+	my $proto = (ref $self )."\::prototype";
+	
+	no strict 'refs';
+	# exit if havent prototype
+	return unless ( ${$proto} && ref ${$proto} eq 'HASH' ); 	
+	# or if we are having prototype - use it !		
+	for ( keys %${$proto} ) {
+		&$prepare( $self, $_ );
+		my $field = /^(.+)_r[ow]$/ ?  $1 : $_ ;
+		$self->$field( ${$proto}->{$_} )
+	}	
+};
+
+$prepare = sub{
 	my $class = ref shift;
 	foreach ( @_ ) {
 		my ( $field, $is_ro ) = /^(.+)_r[ow]$/ ? ( $1, 1 ): $_;
@@ -44,35 +46,34 @@ sub prepare{
 
 		next if ( *$slot{CODE} );		# don`t redefine ours closures
 		
-		*$slot = sub {					# or create closures
-			my $self = shift;
-			return $self->{$slot} unless ( @_ );
-			
-			if ( $is_ro && ! grep { defined $_ and ref $self eq $_ ||
-						__PACKAGE__ eq $_ } ( caller, caller 1 ) ){
-				carp "Can`t change RO properties \"$field\" in object ".ref $self;
-				return undef;
-			}
-			else {
-				$self->{$slot} = shift;
-				return $self->{$slot};
-			}
-		};
+		if ( $field eq 'error_stack' ){ # create error_stack
+			*$slot = sub {					
+				my $self = shift;
+				if ( caller eq ref $self || caller eq __PACKAGE__ ){
+						push @{$self->{$slot}}, shift;
+					}
+				return $self->{$slot};		
+			};
+		}
+		else{							# or create closures
+			*$slot = sub {					
+				my $self = shift;
+				
+				return $self->{$slot} unless ( @_ );
+								
+				if ( $is_ro && !( caller eq ref $self || caller eq __PACKAGE__ ) ){
+					my $err =  sprintf 'Can`t change RO properties |%s| to |%s| in object %s from %s at %s line %s',
+							$field, shift, ref $self, caller;
+					$self->error_stack($err);
+					die $err."\n";
+				}
+				else {
+					return $self->{$slot} = shift;
+				}
+			};
+		}
 	}
-}
-
-
-sub AUTOLOAD{
-	my $self = shift;
-	croak "$self not object" unless ref $self;
-	
-	my $name = our $AUTOLOAD;
-	return if $name =~ /::DESTROY$/;
-	($name) = $name =~ /::(.+)$/;
-		
-	carp "Haven`t \"$name\" in object ".ref $self;
-	undef;
-}
+};
 
 1;
 
@@ -85,7 +86,7 @@ __END__
 
 =head1 NAME
 
-Botox - simple perl OO beauty-shot.
+Botox - simple implementation of abstract
 
 =head1 VERSION
 
@@ -201,6 +202,20 @@ Meettya <L<meettya@gmail.com>>
 =head1 COPYRIGHT
 
 B<Moscow>, fall 2009.
+
+=head1 LICENSE
+
+  This program is free software; you can redistribute it and/or
+  modify it under the terms of the GNU General Public License as
+  published by the Free Software Foundation; either version 2 of the
+  License, or (at your option) any later version.  You may also can
+  redistribute it and/or modify it under the terms of the Perl
+  Artistic License.
+  
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
 =cut
 
