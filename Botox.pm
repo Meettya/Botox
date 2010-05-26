@@ -6,45 +6,59 @@ our $VERSION = 0.8.4;
 
 require Exporter;
 our @ISA = qw( Exporter );
-our @EXPORT_OK = qw( new prepare set_multi AUTOLOAD );
-our %EXPORT_TAGS = ( all => [qw( new prepare set_multi AUTOLOAD )]);
+our @EXPORT_OK = qw( new  );
 
 use autouse 'Carp' => qw( carp croak );
 
 sub new{
     my $invocant = shift;
-    my $self = bless( {}, ref $invocant || $invocant );
-    $self->prepare( @_ ) if @_;
-    return $self;
+    my $self = bless( {}, ref $invocant || $invocant ); # Object or class name  
+   	Botox::prototyping($self);
+	return $self;	
 }
+
+sub prototyping {
+	my ( $proto, $self ) = ( undef, @_ );
+	
+	{ # just to create $proto
+		no strict 'refs';
+		$proto = ${( ref $self )."\::prototype"};
+	}
+	
+	# if we are having prototype - use it !
+	if( ref $proto eq 'HASH' ){		
+		for ( keys %$proto ) {
+			Botox::prepare( $self, $_ );
+			my $field = /^(.+)_r[ow]$/ ?  $1 : $_ ;
+			$self->$field( $proto->{$_} )
+		}
+	}
+};
 
 sub prepare{
 	my $class = ref shift;
 	foreach ( @_ ) {
 		my ( $field, $is_ro ) = /^(.+)_r[ow]$/ ? ( $1, 1 ): $_;
-		my $slot = "$class\::$field"; 	#inject sub to invocant package space
-		no strict "refs";          		#So symbolic ref to typeglob works.
-		*$slot = sub {
+		my $slot = "$class\::$field"; 	# inject sub to invocant package space
+		no strict 'refs';          		# So symbolic ref to typeglob works.
+
+		next if ( *$slot{CODE} );		# don`t redefine ours closures
+		
+		*$slot = sub {					# or create closures
 			my $self = shift;
-			if ( @_ ) {				
-				if ( $is_ro && ! grep { defined $_ and 
-						ref $self eq $_ || __PACKAGE__ eq $_ } 
-							( caller, caller 1 ) ){
-					carp "Can`t change RO properties \"$field\" in object ".ref $self;
-					undef;}
-				else {
-					$self->{$slot} = shift;
-				}
+			return $self->{$slot} unless ( @_ );
+			
+			if ( $is_ro && ! grep { defined $_ and ref $self eq $_ ||
+						__PACKAGE__ eq $_ } ( caller, caller 1 ) ){
+				carp "Can`t change RO properties \"$field\" in object ".ref $self;
+				return undef;
 			}
-			return $self->{$slot};
+			else {
+				$self->{$slot} = shift;
+				return $self->{$slot};
+			}
 		};
 	}
-}
-
-
-sub set_multi{
-	my ( $self, %var ) = @_ ;
-	$self->$_( $var{$_} ) for keys %var;
 }
 
 
@@ -56,23 +70,6 @@ sub AUTOLOAD{
 	return if $name =~ /::DESTROY$/;
 	($name) = $name =~ /::(.+)$/;
 		
-	# make autovivification object property from 'our prototype' class variable 
-	my $proto;
-	{ 	
-		no strict 'refs';
-		$proto = ${( ref $self )."\::prototype"};
-	}
-	
-	# and track RO property, of course
-	if( ref $proto eq 'HASH' &&
-					grep { exists $proto->{$name.$_} } ('','_rw','_ro') ){
-			my $suff = exists $proto->{$name.'_ro'} ? '_ro' : '';
-			$self->prepare($name.$suff);
-			my $value = shift || $proto->{$name.$suff};
-			$self->$name($value);
-			return $value;
-	}
-	# or we are REALY don`t have method or property
 	carp "Haven`t \"$name\" in object ".ref $self;
 	undef;
 }
@@ -113,9 +110,15 @@ Botox - очень простой модуль-подсластитель по �
    {package Parent;	
 	use Botox qw(:all);
 	our $prototype = { 'prop1_ro' => 1.5 , 'prop2' => 2_000_000 };
+	
 	sub show_prop1{
    		my ( $self ) = @_;
    		return $self->prop1;
+	}
+	
+	sub set_prop1{
+		my ( $self, $value ) = @_;
+		$self->prop1($value);
 	}
 	1;
    }
@@ -123,28 +126,35 @@ Botox - очень простой модуль-подсластитель по �
 Экземпляр объекта создается так:
 
    {package Child;
+	$\ = "\n";
 	my $foo = new Parent;
-	print $foo->show_prop1;
+
+	#show RO property
+	print 'Property ',$foo->prop1;
+	print 'From accessor ', $foo->show_prop1;
+	print 'Try to update RO';
+	print $foo->prop1(4) ? 'success' : 'fail' ;	
+	print 'Property after update RO ',$foo->prop1;
 	
-   {
+	# RO via accessor
+	print 'Try to update RO via accessor';
+	print $foo->set_prop1(5) ? 'success' : 'fail' ;	
+	print 'Property after update RO via accessor ',$foo->prop1;
+	
+	#show RW property
+	print 'Property ',$foo->prop2;
+	print 'Try to update RW';
+	print $foo->prop2(4_000_000) ? 'success' : 'fail' ;	
+	print 'Property after update RW ',$foo->prop2;	
+	
+	1;
+	}
 
 
-Класс создается так:
-	
- {{{package Parent;	
-   use Botox qw(new prepare set_multi AUTOLOAD); # now you KNOW how mach is it cost.
-   my $object = new Parent(qw(name adress_rw surname_ro));
-   1;
- }}}
 
-Экземпляр объекта создается так:
-	
- {{{package Child;
-   my $foo = new Parent;
-   $foo->set_multi(name=>'Dolly',adress=>'Scotland, Newerland');
- }}}
 
 Свойства, описаные в конструкторе класса, могут наследоваться и иметь права доступа.
+
 Право доступа указывается в имени свойства конструкцией bar + '_ro' или '_rw'(default).
 Право на доступ по чтению-записи является правилом по умолчанию, таким образом  его указание не обязательно.
 Напротив, ограничение прав "ro - только чтение" требует явного указания этого факта.
