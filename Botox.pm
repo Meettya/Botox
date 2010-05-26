@@ -2,7 +2,7 @@ package Botox;
 
 use strict;
 
-our $VERSION = 0.4.1;
+our $VERSION = 0.8.2;
 
 require Exporter;
 our @ISA = qw(Exporter);
@@ -20,18 +20,21 @@ sub new {
 
 sub prepare {
 	my $class = ref shift;
-	foreach (@_) {
-		my ( $field,$ro ) = /^(.+)_r[ow]$/ ? ( $1, 1 ) : $_ ;
+	foreach ( @_ ) {
+		my ( $field, $is_ro ) = /^(.+)_r[ow]$/ ? ( $1, 1 ): $_;
 		my $slot = "$class\::$field"; 	#inject sub to invocant package space
-		no strict "refs";          		# So symbolic ref to typeglob works.
+		no strict "refs";          		#So symbolic ref to typeglob works.
 		*$slot = sub {
 			my $self = shift;
-			if ( @_ ) {
-				
-				if( $ro && !( (caller)[0] && ref $self eq (caller)[0] or (caller 1)[0] && ref $self eq (caller 1)[0]) ){
-					carp "Can`t change RO properties \"$field\" in object ".ref $self;}
-				
-				else {$self->{$slot} = shift;}
+			if ( @_ ) {				
+				if ( $is_ro && ! grep { defined $_ && 
+						( ref $self eq $_ || __PACKAGE__ eq $_  )} 
+							( (caller)[0], (caller 1)[0] ) ){
+					carp "Can`t change RO properties \"$field\" in object ".ref $self;
+					undef;}
+				else {
+					$self->{$slot} = shift;
+				}
 			}
 			return $self->{$slot};
 		};
@@ -52,7 +55,24 @@ sub AUTOLOAD {
 	my $name = our $AUTOLOAD;
 	return if $name =~ /::DESTROY$/;
 	($name) = $name =~ /::(.+)$/;
-	carp "Haven`t properties \"$name\" in object ".ref $self;
+		
+	# make autovivification object property from 'our init' class variable 
+	no strict 'refs';
+	my $concealed = ${( ref $self )."\::init"};
+	
+	# and track RO property, of course
+	if( ref $concealed eq 'HASH' &&
+					grep { exists $concealed->{$name.$_} } ('','_rw','_ro') ){
+						
+			my $suff = exists $concealed->{$name.'_ro'} ? '_ro' : '';
+			$self->prepare($name.$suff);
+			my $value = shift || $concealed->{$name.$suff};
+			$self->$name($value);
+			return $value;
+	}
+	# or we are REALY don`t have property
+	carp "Haven`t property \"$name\" in object ".ref $self;
+	undef;
 }
 
 1;
