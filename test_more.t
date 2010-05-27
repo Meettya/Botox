@@ -10,7 +10,8 @@ can_ok('Botox', qw(new) );
 {	package Parent;
 
 	use Botox qw(new);
-	our $prototype = { 'prop1_ro' => 1 , 'prop2' => 'abcde' };
+		
+	our $object_prototype = { 'prop1_ro' => 1 , 'prop2' => 'abcde' };
 	
 	sub show_prop1{ # It`s poinlessly - indeed property IS A accessor itself
 		my ( $self ) = @_;
@@ -32,6 +33,11 @@ can_ok('Botox', qw(new) );
 {	package Child;
 	
 	use Data::Dumper;
+	
+	use base 'Parent';
+	
+	our $object_prototype = {  %$Parent::object_prototype,
+					'prop1_ro' => 44, 'prop5' => 55 , 'prop8_ro' => 'tetete' };
 	
 	my $make_test = sub {	
 		my ( $self, $i ) = @_ ;		
@@ -62,5 +68,19 @@ can_ok('Botox', qw(new) );
 	print "\nPersistent data test:\n";
 	&$persistent_test($foo);
 
+	print Dumper($foo);
+
 	1;
+}
+
+{ package GrandChild;
+
+
+	use Data::Dumper;
+	my $baz = new Child;
+	
+	print Dumper($baz);
+
+	print $baz->show_prop1,"\n";
+
 }

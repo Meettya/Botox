@@ -2,7 +2,7 @@ package Botox;
 
 use strict;
 
-our $VERSION = 0.9.1;
+our $VERSION = 0.9.3;
 
 use Exporter 'import';
 our @EXPORT_OK = qw(new);
@@ -19,7 +19,7 @@ sub new{
 
 $prototyping = sub{
 	my $self = shift;
-	my $proto = (ref $self )."\::prototype";
+	my $proto = (ref $self )."\::object_prototype";
 	
 	no strict 'refs';
 	# exit if havent prototype
@@ -35,7 +35,7 @@ $prototyping = sub{
 $prepare = sub{
 	my $class = ref shift;
 	foreach ( @_ ) {
-		my ( $field, $is_ro ) = /^(.+)_r[ow]$/ ? ( $1, 1 ): $_;
+		my ( $field, $is_ro ) = /^(.+)_r[ow]$/ ? ( $1, 1 ) : $_;
 		my $slot = "$class\::$field"; 	# inject sub to invocant package space
 		no strict 'refs';          		# So symbolic ref to typeglob works.
 
@@ -67,71 +67,74 @@ __END__
 
 =head1 NAME
 
-Botox - simple implementation of abstract
+Botox - simple implementation of Abstract Factory with prototyping and declared accessibilities for properties: write-protected or public AND default fill it. 
 
 =head1 VERSION
 
-B<$VERSION 0.8.4>
+B<$VERSION 0.9.4>
 
 =head1 SYNOPSIS
 
-Botox предназначен для упрощения конструирования классов и объектов, представляя из себя абстрактную фабрику.
+Botox предназначен для создания объектов с прототипируемыми управляемыми по доступности свойствами: write-protected или public И возможности установки этим свойствам дефолтных значений.
 
   package Parent;
-  use Botox qw(:all); # imported ( new prepare set_multi AUTOLOAD )
-  our $prototype = { 'prop1_ro' => 1.5 , 'prop2' => 2_000_000 }; # default properties for ANY object of `Parent` class
+  use Botox qw(new); # yes, we are got constructor
+  
+  # default properties for ANY object of `Parent` class:
+  # prop1_ro ISA 'write-protected' && prop2 ISA 'public'
+  # and seting default value for each other
+  our $object_prototype = { 'prop1_ro' => 1 , 'prop2' => 'abcde' }; 
 
 
 =head1 DESCRIPTION
 
-Botox - очень простой модуль-подсластитель по мотивам Moose, но не использующий слишком сильной магии, ну почти не использующий.
-Его цель - автоматизация конструирования объектов и упрощение синтаксиса ОО.
+Botox - простой абстрактный конструктор, дающий возможность создавать объекты по прототипу и управлять их свойствами: write-protected или public. Кроме того он позволяет проставить свойствам значения по умолчанию.
+
 
 Класс создается так:
    
-   {package Parent;	
-	use Botox qw(:all);
-	our $prototype = { 'prop1_ro' => 1.5 , 'prop2' => 2_000_000 };
+	{	package Parent;
 	
-	sub show_prop1{
-   		my ( $self ) = @_;
-   		return $self->prop1;
+		use Botox qw(new);
+		our $object_prototype = { 'prop1_ro' => 1 , 'prop2' => 'abcde' };
+		
+		sub show_prop1{ # It`s poinlessly - indeed property IS A accessor itself
+			my ( $self ) = @_;
+			return $self->prop1;
+		}
+		
+		sub set_prop1{ # It`s NEEDED for RO aka protected on write property
+			my ( $self, $value ) = @_;
+			$self->prop1($value);
+		}
+		
+		sub parent_sub{ # It`s class method itself
+			my $self = shift;
+			return $self->prop1;
+		}
+		1;
 	}
-	
-	sub set_prop1{
-		my ( $self, $value ) = @_;
-		$self->prop1($value);
-	}
-	1;
-   }
 
 Экземпляр объекта создается так:
 
-   {package Child;
-	$\ = "\n";
-	my $foo = new Parent;
-
-	#show RO property
-	print 'Property ',$foo->prop1;
-	print 'From accessor ', $foo->show_prop1;
-	print 'Try to update RO';
-	print $foo->prop1(4) ? 'success' : 'fail' ;	
-	print 'Property after update RO ',$foo->prop1;
+	{	package Child;
 	
-	# RO via accessor
-	print 'Try to update RO via accessor';
-	print $foo->set_prop1(5) ? 'success' : 'fail' ;	
-	print 'Property after update RO via accessor ',$foo->prop1;
-	
-	#show RW property
-	print 'Property ',$foo->prop2;
-	print 'Try to update RW';
-	print $foo->prop2(4_000_000) ? 'success' : 'fail' ;	
-	print 'Property after update RW ',$foo->prop2;	
-	
-	1;
+		my $foo = new Parent;
+		
+		1;
 	}
 
+Собственно, это весь код для создания экземпляра.
+
+	use Data::Dumper;
+	print Dumper($foo);
+	
+Даст нам 
+
+	$VAR1 = bless( {
+					 'Parent::prop1' => 1,
+					 'Parent::prop2' => 'abcde'
+				   }, 'Parent' );
 
 
 
