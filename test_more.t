@@ -7,7 +7,8 @@ use Test::More tests => 15;
 use_ok( 'Botox', qw(new) );
 can_ok('Botox', qw(new) );
 
-{package Parent;	
+{	package Parent;
+
 	use Botox qw(new);
 	our $prototype = { 'prop1_ro' => 1 , 'prop2' => 'abcde' };
 	
@@ -28,17 +29,15 @@ can_ok('Botox', qw(new) );
 	1;
 }
    
-{package Child;
+{	package Child;
 	
 	use Data::Dumper;
-
-	use Parent;
 	
 	my $make_test = sub {	
 		my ( $self, $i ) = @_ ;		
 		main::ok($self->prop1 == 1 && $self->prop2 eq 'abcde', "Init test pass");
 		main::ok($self->show_prop1 == 1, "Read accessor test pass");
-		main::ok(! eval{ $self->prop1(4*$i) } && $self->prop1 == 1 , 
+		main::ok(! eval{ $self->prop1(4*$i) } && $@ && $self->prop1 == 1 , 
 				"Read-only property test pass");
 		main::ok($self->set_prop1(5*$i) && $self->prop1 == 5*$i,
 				"Write accessor method test pass");
@@ -63,9 +62,5 @@ can_ok('Botox', qw(new) );
 	print "\nPersistent data test:\n";
 	&$persistent_test($foo);
 
-	print Dumper($bar->error_stack), "\n";
-
 	1;
 }
-
-1;

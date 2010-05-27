@@ -8,19 +8,14 @@ use Exporter 'import';
 our @EXPORT_OK = qw(new);
 
 my ( $prepare, $prototyping, $error_stack );
+my $err_text = qq(Can`t change RO properties |%s| to |%s| in object %s from %s at %s line %s\n);
 
 sub new{
     my $invocant = shift;
     my $self = bless( {}, ref $invocant || $invocant ); # Object or class name  
-   	&$error_stack( $self );
    	&$prototyping( $self );
 	return $self;
 }
-
-$error_stack = sub{
-	my $self = shift;
-	&$prepare( $self, 'error_stack_ro' );
-};
 
 $prototyping = sub{
 	my $self = shift;
@@ -45,33 +40,19 @@ $prepare = sub{
 		no strict 'refs';          		# So symbolic ref to typeglob works.
 
 		next if ( *$slot{CODE} );		# don`t redefine ours closures
-		
-		if ( $field eq 'error_stack' ){ # create error_stack
-			*$slot = sub {
-				my $self = shift;
-				if ( caller eq ref $self || caller eq __PACKAGE__ ){
-						push @{$self->{$slot}}, shift;
-					}
-				return $self->{$slot};
-			};
-		}
-		else{							# or create closures
-			*$slot = sub {
-				my $self = shift;
-				
-				return $self->{$slot} unless ( @_ );
-								
-				if ( $is_ro && !( caller eq ref $self || caller eq __PACKAGE__ ) ){
-					my $err =  sprintf 'Can`t change RO properties |%s| to |%s| in object %s from %s at %s line %s',
-							$field, shift, ref $self, caller;
-					$self->error_stack($err);
-					die $err."\n";
-				}
-				else {
-					return $self->{$slot} = shift;
-				}
-			};
-		}
+
+		*$slot = sub {					# or create closures
+			my $self = shift;
+			
+			return $self->{$slot} unless ( @_ );
+							
+			if ( $is_ro && !( caller eq ref $self || caller eq __PACKAGE__ ) ){
+				die sprintf $err_text, $field, shift, ref $self, caller;
+			}
+			else {
+				return $self->{$slot} = shift;
+			}
+		};	
 	}
 };
 
