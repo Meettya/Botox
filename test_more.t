@@ -36,8 +36,9 @@ can_ok('Botox', qw(new) );
 	
 	use base 'Parent';
 	
-	our $object_prototype = {  %$Parent::object_prototype,
-					'prop1_ro' => 44, 'prop5' => 55 , 'prop8_ro' => 'tetete' };
+	# ха! при создании объекта из класса Child мы получим в прототипе ВСЕ свойства из Parent по умолчанию.
+	our $object_prototype = {'prop1' => 48, 'prop5' => 55 , 
+		'prop8_ro' => 'tetete' };
 	
 	my $make_test = sub {	
 		my ( $self, $i ) = @_ ;		
@@ -75,11 +76,13 @@ can_ok('Botox', qw(new) );
 
 { package GrandChild;
 
-
 	use Data::Dumper;
 	my $baz = new Child;
 	
 	print Dumper($baz);
+	
+	eval{$baz->prop1(-23)};
+	print $@."\n";
 
 	print $baz->show_prop1,"\n";
 

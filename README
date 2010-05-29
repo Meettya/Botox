@@ -1,57 +1,104 @@
 NAME
 
-Botox - simple perl OO beauty-shot.
+Botox - simple implementation of Abstract Factory with prototyping and declared accessibilities for properties: write-protected or public AND default fill it.
+
+VERSION
+
+$VERSION 0.9.5
 
 SYNOPSIS
 
-Botox предназначен для упрощения конструирования классов и объектов.
+Botox предназначен для создания объектов с прототипируемыми управляемыми по доступности свойствами: write-protected или public И возможности установки этим свойствам дефолтных значений.
 
-  use Botox qw(new prepare set_multi AUTOLOAD);
-  my $object = new Parent(qw(name adress_rw surname_ro));
+  package Parent;
+  use Botox qw(new); # yes, we are got constructor
+  
+  # default properties for ANY object of `Parent` class:
+  # prop1_ro ISA 'write-protected' && prop2 ISA 'public'
+  # and seting default value for each other
+  our $object_prototype = { 'prop1_ro' => 1 , 'prop2' => 'abcde' };
 DESCRIPTION
 
-Botox - очень простой модуль-подсластитель по мотивам Moose, но не использующий слишком сильной магии. Здесь есть лишь пара легких трюков, которым можно запросто научится за полчасика.
+Botox - простой абстрактный конструктор, дающий возможность создавать объекты по прототипу и управлять их свойствами: write-protected или public. Кроме того он позволяет проставить свойствам значения по умолчанию.
 
 Класс создается так:
 
 
- {{{package Parent;     
-   use Botox qw(new prepare set_multi AUTOLOAD); # now you KNOW how mach is it cost.
-   my $object = new Parent(qw(name adress_rw surname_ro));
-   1;
- }}}
+        package Parent;
+        use Botox qw(new);
+        our $object_prototype = { 'prop1_ro' => 1 , 'prop2' => 'abcde' };
+        
+        sub show_prop1{ # It`s poinlessly - indeed property IS A accessor itself
+                my ( $self ) = @_;
+                return $self->prop1;
+        }
+        
+        sub set_prop1{ # It`s NEEDED for RO aka protected on write property
+                my ( $self, $value ) = @_;
+                $self->prop1($value);
+        }
+        
+        sub parent_sub{ # It`s class method itself
+                my $self = shift;
+                return $self->prop1;
+        }
+        1;
 Экземпляр объекта создается так:
 
-
- {{{package Child;
-   my $foo = new Parent;
-   $foo->set_multi(name=>'Dolly',adress=>'Scotland, Newerland');
- }}}
-Свойства, описаные в конструкторе класса, могут наследоваться и иметь права доступа. Право доступа указывается в имени свойства конструкцией bar + '_ro' или '_rw'(default). Право на доступ по чтению-записи является правилом по умолчанию, таким образом его указание не обязательно. Напротив, ограничение прав ``ro - только чтение'' требует явного указания этого факта. Далее для возможности работы с данным свойством НА ЗАПИСЬ из экземпляра объекта следует создать в классе акцессор:
-
-   #$foo->surname('sheep'); # wrong! surname is RO properties, create acessor in Parent instead
-   # - need in Parent -
-    sub set_surname {
-    my $self = shift;
-    $self->surname(shift) if @_;
-    }
-   # - then in Child - 
-    $foo->set_surname('sheep'); # right! you are create acessor.
-В Botox свойства, подобно методам, наследуются. Создавая класс с двумя и более предками следует внимательно отнестись к очередности указания родителей класса. Левый родитель получает приоритет при наличии одинаковых свойств.
-
-Для облегчения инициализации свойств экземпляра в Botox имеется метод set_multi (только для RW-свойств)
-
-
-        $foo->set_multi(name=>'Dolly',adress=>'Scotland, Newerland');
-Метод prepare может быть вызван для создания свойств вместо передачи списка методу new
-
-  {{{package Parent;    
-    use Botox qw(new prepare set_multi AUTOLOAD);
-    my $object = new Parent;
-        $object->prepare(qw(name adress_rw surname_ro));
+        package Child;
+        
+        my $foo = new Parent;
+                
         1;
-  }}}
-Использование AUTOLOAD объясняется желанием сэкономить нервы, выдавая нефатальное сообщение об отсутствии свойства или метода в классе. ИМХО! Фатализм и повышеная смертность приложений при малейших ошибках является ошибкой проектирования системы.
+Собственно, это весь код для создания экземпляра.
+
+        use Data::Dumper;
+        print Dumper($foo);
+        
+Даст нам
+        $VAR1 = bless( {
+                        'Parent::prop1' => 1,
+                        'Parent::prop2' => 'abcde'
+                         }, 'Parent' );
+Свойства, описаные в конструкторе класса, могут наследоваться и иметь права доступа.
+
+Право доступа указывается в имени свойства конструкцией bar + '_ro' или '_rw'(default). Право на доступ по чтению-записи является правилом по умолчанию, таким образом его указание не обязательно. Напротив, ограничение прав "ro - только чтение" требует явного указания этого факта. Далее для возможности работы с данным свойством НА ЗАПИСЬ из экземпляра объекта следует создать в классе акцессор, например:
+
+        eval{$foo->prop1(-23)};
+        print $@."\n";
+        
+Даст нам что-то вроде:
+        Can`t change RO properties |prop1| to |-23| in object Parent from Child at ./test_more.t line 84
+Для работы с данным свойством в родительском классе у нас был создан аксессор, который и следует использовать:
+
+        $foo->set_prop1(-23);
+Создавая производный класс от родительского
+
+        package Child;  
+        use base 'Parent';
+        our $object_prototype = {'prop1' => 48, 'prop5' => 55 , 
+                'prop8_ro' => 'tetete' };
+        1;
+В наследство мы получим ВСЕ методы Parent (что ожидаемо) и ВСЕ дефолтные свойства Parent (что неожиданно), и это правильная вещь. Вероятнее всего методы родителя будут ожидать наличия знакомых им свойств, поэтому они сохраняют свойства атрибута прав доступа (RO\RW), однако позволяют переписать сами значения.
+
+        package GrandChild;
+        use Data::Dumper;
+        my $baz = new Child;
+        
+        print Dumper($baz);
+        
+        eval{$baz->prop1(-23)};
+        print $@."\n";
+Даст нам вот такой вывод:
+
+        $VAR1 = bless( {
+                 'Child::prop5' => 55,
+                 'Child::prop2' => 'abcde',
+                 'Child::prop1' => 48,
+                 'Child::prop8' => 'tetete'
+               }, 'Child' );
+        Can`t change RO properties |prop1| to |-23| in object Child from GrandChild at ./test_more.t line 84
+То есть мы смогли получить новый класс Child на базе Parent со свойствами обоих классов, причем в свойствах преобладают настройки прав свойств родителя и значения свойств ребенка.
 
 AUTOR
 
@@ -63,6 +110,22 @@ BUGS
 
 SEE ALSO
 
+Moose, Mouse
+
 COPYRIGHT
 
 Moscow, fall 2009.
+
+LICENSE
+
+  This program is free software; you can redistribute it and/or
+  modify it under the terms of the GNU General Public License as
+  published by the Free Software Foundation; either version 2 of the
+  License, or (at your option) any later version.  You may also can
+  redistribute it and/or modify it under the terms of the Perl
+  Artistic License.
+  
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.

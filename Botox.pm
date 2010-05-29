@@ -1,59 +1,67 @@
 package Botox;
 
 use strict;
+use warnings;
 
-our $VERSION = 0.9.3;
+our $VERSION = 0.9.5;
 
 use Exporter 'import';
 our @EXPORT_OK = qw(new);
 
-my ( $prepare, $prototyping, $error_stack );
-my $err_text = qq(Can`t change RO properties |%s| to |%s| in object %s from %s at %s line %s\n);
+my ( $prepare, $prototyping );
+my $err_text = qq(Can`t change RO properties |%s| to |%s| in object %s from %s at %s line %d\n);
 
 sub new{
     my $invocant = shift;
     my $self = bless( {}, ref $invocant || $invocant ); # Object or class name  
-   	&$prototyping( $self );
+	&$prototyping( $self );
 	return $self;
 }
 
 $prototyping = sub{
 	my $self = shift;
-	my $proto = (ref $self )."\::object_prototype";
+	my $isa = (ref $self )."\::ISA";
+	# we are known what is it for
+	no strict 'refs';  
+	# YES, just push object class to grandparents list AND get ALL prior object _proptotype one by one 
+	my $class_list = [ @$isa ,( ref $self ) ];
+
+	foreach my $class (@$class_list){
 	
-	no strict 'refs';
-	# exit if havent prototype
-	return unless ( ${$proto} && ref ${$proto} eq 'HASH' );
-	# or if we are having prototype - use it !		
-	for ( keys %${$proto} ) {
-		&$prepare( $self, $_ );
-		my $field = /^(.+)_r[ow]$/ ?  $1 : $_ ;
-		$self->$field( ${$proto}->{$_} )
+		my $proto = $class."\::object_prototype";
+
+		# exit if havent prototype
+		return unless ( ${$proto} && ref ${$proto} eq 'HASH' );
+		# or if we are having prototype - use it !		
+		for ( reverse keys %${$proto} ) { # YES! reverse for keep RO properties
+			&$prepare( $self, $_ );
+			my $field = /^(.+)_r[ow]$/ ?  $1 : $_ ;
+			$self->$field( ${$proto}->{$_} )
+		}	
 	}
 };
 
 $prepare = sub{
 	my $class = ref shift;
-	foreach ( @_ ) {
-		my ( $field, $is_ro ) = /^(.+)_r[ow]$/ ? ( $1, 1 ) : $_;
-		my $slot = "$class\::$field"; 	# inject sub to invocant package space
-		no strict 'refs';          		# So symbolic ref to typeglob works.
+	my $row_field = shift;
 
-		next if ( *$slot{CODE} );		# don`t redefine ours closures
+	my ( $field, $ro ) = $row_field =~ /^(.+)_(r[ow])$/ ? ( $1, $2 ) : $row_field;
+	my $slot = "$class\::$field"; 	# inject sub to invocant package space
+	no strict 'refs';          		# So symbolic ref to typeglob works.
+	return if ( *$slot{CODE} );		# don`t redefine ours closures
+	
+	*$slot = sub {					# or create closures
+		my $self = shift;		
+		return $self->{$slot} unless ( @_ );						
+		if ( defined $ro && $ro eq 'ro' &&
+						!( caller eq ref $self || caller eq __PACKAGE__ ) ){
+			die sprintf $err_text, $field, shift, ref $self, caller;
+		}
+		else {
+			return $self->{$slot} = shift;
+		}
+	};	
 
-		*$slot = sub {					# or create closures
-			my $self = shift;
-			
-			return $self->{$slot} unless ( @_ );
-							
-			if ( $is_ro && !( caller eq ref $self || caller eq __PACKAGE__ ) ){
-				die sprintf $err_text, $field, shift, ref $self, caller;
-			}
-			else {
-				return $self->{$slot} = shift;
-			}
-		};	
-	}
 };
 
 1;
@@ -71,7 +79,7 @@ Botox - simple implementation of Abstract Factory with prototyping and declared 
 
 =head1 VERSION
 
-B<$VERSION 0.9.4>
+B<$VERSION 0.9.5>
 
 =head1 SYNOPSIS
 
@@ -90,39 +98,37 @@ Botox предназначен для создания объектов с пр�
 
 Botox - простой абстрактный конструктор, дающий возможность создавать объекты по прототипу и управлять их свойствами: write-protected или public. Кроме того он позволяет проставить свойствам значения по умолчанию.
 
-
 Класс создается так:
    
-	{	package Parent;
+	package Parent;
+
+	use Botox qw(new);
+	our $object_prototype = { 'prop1_ro' => 1 , 'prop2' => 'abcde' };
 	
-		use Botox qw(new);
-		our $object_prototype = { 'prop1_ro' => 1 , 'prop2' => 'abcde' };
-		
-		sub show_prop1{ # It`s poinlessly - indeed property IS A accessor itself
-			my ( $self ) = @_;
-			return $self->prop1;
-		}
-		
-		sub set_prop1{ # It`s NEEDED for RO aka protected on write property
-			my ( $self, $value ) = @_;
-			$self->prop1($value);
-		}
-		
-		sub parent_sub{ # It`s class method itself
-			my $self = shift;
-			return $self->prop1;
-		}
-		1;
+	sub show_prop1{ # It`s poinlessly - indeed property IS A accessor itself
+		my ( $self ) = @_;
+		return $self->prop1;
 	}
+	
+	sub set_prop1{ # It`s NEEDED for RO aka protected on write property
+		my ( $self, $value ) = @_;
+		$self->prop1($value);
+	}
+	
+	sub parent_sub{ # It`s class method itself
+		my $self = shift;
+		return $self->prop1;
+	}
+	1;
+
 
 Экземпляр объекта создается так:
 
-	{	package Child;
+	package Child;
 	
-		my $foo = new Parent;
+	my $foo = new Parent;
 		
-		1;
-	}
+	1;
 
 Собственно, это весь код для создания экземпляра.
 
@@ -132,10 +138,9 @@ Botox - простой абстрактный конструктор, дающи
 Даст нам 
 
 	$VAR1 = bless( {
-					 'Parent::prop1' => 1,
-					 'Parent::prop2' => 'abcde'
-				   }, 'Parent' );
-
+			'Parent::prop1' => 1,
+			'Parent::prop2' => 'abcde'
+			 }, 'Parent' );
 
 
 Свойства, описаные в конструкторе класса, могут наследоваться и иметь права доступа.
@@ -143,34 +148,53 @@ Botox - простой абстрактный конструктор, дающи
 Право доступа указывается в имени свойства конструкцией bar + '_ro' или '_rw'(default).
 Право на доступ по чтению-записи является правилом по умолчанию, таким образом  его указание не обязательно.
 Напротив, ограничение прав "ro - только чтение" требует явного указания этого факта.
-Далее для возможности работы с данным свойством НА ЗАПИСЬ из экземпляра объекта следует создать в классе акцессор:
+Далее для возможности работы с данным свойством НА ЗАПИСЬ из экземпляра объекта следует создать в классе акцессор, например:
 
-   #$foo->surname('sheep'); # wrong! surname is RO properties, create acessor in Parent instead
-   # - need in Parent -
-    sub set_surname {
-    my $self = shift;
-    $self->surname(shift) if @_;
-    }
-   # - then in Child - 
-    $foo->set_surname('sheep'); # right! you are create acessor.
-
-В Botox свойства, подобно методам, B<наследуются>. Создавая класс с двумя и более предками следует внимательно отнестись к очередности указания родителей класса. Левый родитель получает приоритет при наличии одинаковых свойств.
-
-Для облегчения инициализации свойств экземпляра в Botox имеется метод set_multi (только для RW-свойств)
+	eval{$foo->prop1(-23)};
+	print $@."\n";
 	
-	$foo->set_multi(name=>'Dolly',adress=>'Scotland, Newerland');
+Даст нам что-то вроде:
 
-Метод prepare может быть вызван для создания свойств вместо передачи списка методу new
+	Can`t change RO properties |prop1| to |-23| in object Parent from Child at ./test_more.t line 84
 
-  {{{package Parent;	
-    use Botox qw(new prepare set_multi AUTOLOAD);
-    my $object = new Parent;
-	$object->prepare(qw(name adress_rw surname_ro));
+Для работы с данным свойством в родительском классе у нас был создан аксессор, который и следует использовать:
+
+	$foo->set_prop1(-23);
+
+Создавая производный класс от родительского
+
+	package Child;	
+	use base 'Parent';
+
+	our $object_prototype = {'prop1' => 48, 'prop5' => 55 , 
+		'prop8_ro' => 'tetete' };
 	1;
-  }}}
 
-Использование AUTOLOAD объясняется желанием сэкономить нервы, выдавая нефатальное сообщение об отсутствии свойства или метода в классе.
-ИМХО! Фатализм и повышеная смертность приложений при малейших ошибках является ошибкой проектирования системы.
+В наследство мы получим ВСЕ методы Parent (что ожидаемо) и ВСЕ дефолтные свойства Parent (что неожиданно), и это правильная вещь.
+Вероятнее всего методы родителя будут ожидать наличия знакомых им свойств, поэтому они сохраняют свойства атрибута прав доступа (RO\RW), однако позволяют переписать сами значения.
+
+	package GrandChild;
+
+	use Data::Dumper;
+	my $baz = new Child;
+	
+	print Dumper($baz);
+	
+	eval{$baz->prop1(-23)};
+	print $@."\n";
+
+Даст нам вот такой вывод:
+
+	$VAR1 = bless( {
+                 'Child::prop5' => 55,
+                 'Child::prop2' => 'abcde',
+                 'Child::prop1' => 48,
+                 'Child::prop8' => 'tetete'
+               }, 'Child' );
+
+	Can`t change RO properties |prop1| to |-23| in object Child from GrandChild at ./test_more.t line 84
+
+То есть мы смогли получить новый класс Child на базе Parent со свойствами обоих классов, причем в свойствах преобладают настройки прав свойств родителя и значения свойств ребенка.
 
 =head1 AUTOR	
 
@@ -182,6 +206,7 @@ Meettya <L<meettya@gmail.com>>
 
 =head1 SEE ALSO
 
+Moose, Mouse
 
 =head1 COPYRIGHT
 
