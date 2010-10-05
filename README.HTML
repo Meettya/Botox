@@ -2,7 +2,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-<title>Botox</title>
+<title>Botox - simple implementation of Modern Object Constructor with accessor, prototyping and default-filling of inheritanced values.</title>
 <meta http-equiv="content-type" content="text/html; charset=utf-8" />
 <link rev="made" href="mailto:meettya@acer.local" />
 </head>
@@ -30,22 +30,19 @@
 <hr name="index" />
 </div>
 <!-- INDEX END -->
-
-<p>
-</p>
 <hr />
 <h1><a name="name">NAME</a></h1>
-<p>Botox - simple implementation of Abstract Factory with prototyping and declared accessibilities for properties: write-protected or public AND default fill it.</p>
+<p>Botox - simple implementation of Modern Object Constructor with accessor, prototyping and default-filling of inheritanced values.</p>
 <p>
 </p>
 <hr />
 <h1><a name="version">VERSION</a></h1>
-<p><strong>$VERSION 0.9.5</strong></p>
+<p><strong>$VERSION 0.9.9</strong></p>
 <p>
 </p>
 <hr />
 <h1><a name="synopsis">SYNOPSIS</a></h1>
-<p>Botox предназначен для создания объектов с прототипируемыми управляемыми по доступности свойствами: write-protected или public И возможности установки этим свойствам дефолтных значений.</p>
+<p>Botox предназначен для создания объектов с прототипируемыми управляемыми по доступности свойствами: write-protected или public И возможности установки этим свойствам дефолтных значений (как в прототипе, так и при создании объекта). Построение цепочки наследования производится на основе ::mro, методы и свойства переопределяются в потомке.</p>
 <pre>
   package Parent;
   use Botox qw(new); # yes, we are got constructor
@@ -53,19 +50,22 @@
   # default properties for ANY object of `Parent` class:
   # prop1_ro ISA 'write-protected' &amp;&amp; prop2 ISA 'public'
   # and seting default value for each other
-  our $object_prototype = { 'prop1_ro' =&gt; 1 , 'prop2' =&gt; 'abcde' };</pre>
+  
+  sub _prototype_{ 'prop1_ro' =&gt; 1 , 'prop2' =&gt; 'abcde' }; 
+  
+  # OR sub _prototype_{ return {'prop1_ro' =&gt; 1 , 'prop2' =&gt; 'abcde'} };</pre>
 <p>
 </p>
 <hr />
 <h1><a name="description">DESCRIPTION</a></h1>
-<p>Botox - простой абстрактный конструктор, дающий возможность создавать объекты по прототипу и управлять их свойствами: write-protected или public. Кроме того он позволяет проставить свойствам значения по умолчанию.</p>
+<p>Botox - простой абстрактный конструктор, дающий возможность создавать объекты по прототипу и управлять их свойствами: write-protected или public. Кроме того он позволяет проставить свойствам значения по умолчанию (как в прототипе, так и при создании объекта).</p>
 <p>Класс создается так:</p>
 <pre>
 
         package Parent;</pre>
 <pre>
         use Botox qw(new);
-        our $object_prototype = { 'prop1_ro' =&gt; 1 , 'prop2' =&gt; 'abcde' };
+        sub _prototype_{ 'prop1_ro' =&gt; 1 , 'prop2' =&gt; 'abcde' };
         
         sub show_prop1{ # It`s poinlessly - indeed property IS A accessor itself
                 my ( $self ) = @_;
@@ -85,8 +85,8 @@
 <p>Экземпляр объекта создается так:</p>
 <pre>
         package Child;
-        
-        my $foo = new Parent;
+        # change default value for prop1
+        my $foo = new Parent( { prop1 =&gt; 888888 } );
                 
         1;</pre>
 <p>Собственно, это весь код для создания экземпляра.</p>
@@ -97,7 +97,7 @@
 Даст нам</pre>
 <pre>
         $VAR1 = bless( {
-                        'Parent::prop1' =&gt; 1,
+                        'Parent::prop1' =&gt; 888888,
                         'Parent::prop2' =&gt; 'abcde'
                          }, 'Parent' );</pre>
 <p>Свойства, описаные в конструкторе класса, могут наследоваться и иметь права доступа.</p>
@@ -106,7 +106,7 @@
 Напротив, ограничение прав &quot;ro - только чтение&quot; требует явного указания этого факта.
 Далее для возможности работы с данным свойством НА ЗАПИСЬ из экземпляра объекта следует создать в классе акцессор, например:</p>
 <pre>
-        eval{$foo-&gt;prop1(-23)};
+        eval{ $foo-&gt;prop1(-23) };
         print $@.&quot;\n&quot;;
         
 Даст нам что-то вроде:</pre>
@@ -120,21 +120,28 @@
         package Child;  
         use base 'Parent';</pre>
 <pre>
-        our $object_prototype = {'prop1' =&gt; 48, 'prop5' =&gt; 55 , 
-                'prop8_ro' =&gt; 'tetete' };
+        sub _prototype_{ 
+                                return {'prop1' =&gt; 48,
+                                                'prop5' =&gt; 55 , 
+                                                'prop8_ro' =&gt; 'tetete'
+                                                };
+        };
         1;</pre>
 <p>В наследство мы получим ВСЕ методы Parent (что ожидаемо) и ВСЕ дефолтные свойства Parent (что неожиданно), и это правильная вещь.
-Вероятнее всего методы родителя будут ожидать наличия знакомых им свойств, поэтому они сохраняют свойства атрибута прав доступа (RO\RW), однако позволяют переписать сами значения.</p>
+Дефолтные значения И свойства доступа прототипа могут переопределяться в потомке, перезаписывая данные.</p>
 <pre>
         package GrandChild;</pre>
 <pre>
         use Data::Dumper;
-        my $baz = new Child;
+        my $baz = new Child();
         
         print Dumper($baz);
         
-        eval{$baz-&gt;prop1(-23)};
-        print $@.&quot;\n&quot;;</pre>
+        eval{$baz-&gt;prop8(-23)};
+        print $@.&quot;\n&quot;;
+        
+        eval{$baz-&gt;prop1(1_000)};
+        print '$baz-&gt;prop1 = '.$baz-&gt;prop1().&quot;\n&quot;;</pre>
 <p>Даст нам вот такой вывод:</p>
 <pre>
         $VAR1 = bless( {
@@ -144,8 +151,27 @@
                  'Child::prop8' =&gt; 'tetete'
                }, 'Child' );</pre>
 <pre>
-        Can`t change RO properties |prop1| to |-23| in object Child from GrandChild at ./test_more.t line 84</pre>
-<p>То есть мы смогли получить новый класс Child на базе Parent со свойствами обоих классов, причем в свойствах преобладают настройки прав свойств родителя и значения свойств ребенка.</p>
+        Can`t change RO properties |prop8| to |-23| in object Child from GrandChild at ./test_more.t line 84
+        $baz-&gt;prop1 = 1000</pre>
+<p>То есть мы смогли получить новый класс Child на базе Parent со свойствами обоих классов, причем настройки верхнего уровня переопределяют родительские (включая права доступа).</p>
+<p>Кроме того, возможна дефолтная инициализация свойств объекта:</p>
+<pre>
+        package GrandChild;</pre>
+<pre>
+        use Data::Dumper;
+        my $baz = new Child(prop1 =&gt; 99); # OR ({prop1 =&gt; 99}) as you wish
+        
+        print Dumper($baz);</pre>
+<p>Даст нам вот такой вывод:</p>
+<pre>
+        $VAR1 = bless( {
+                 'Child::prop5' =&gt; 55,
+                 'Child::prop2' =&gt; 'abcde',
+                 'Child::prop1' =&gt; 99,
+                 'Child::prop8' =&gt; 'tetete'
+               }, 'Child' );</pre>
+<p>При создании объекта возможно задавать значения как rw так и ro свойств(что логично).
+Попытка задать значение несуществующего свойства даст ошибку.</p>
 <p>
 </p>
 <hr />
@@ -160,7 +186,7 @@
 </p>
 <hr />
 <h1><a name="see_also">SEE ALSO</a></h1>
-<p>Moose, Mouse</p>
+<p>Moose, Mouse, Class::Accessor</p>
 <p>
 </p>
 <hr />
@@ -181,7 +207,9 @@
   This program is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.</pre>
+  GNU General Public License for more details.
+
+</pre>
 
 </body>
 
