@@ -2,9 +2,9 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-<title>Botox - simple implementation of Modern Object Constructor with accessor, prototyping and default-filling of inheritanced values.</title>
+<title>Botox</title>
 <meta http-equiv="content-type" content="text/html; charset=utf-8" />
-<link rev="made" href="mailto:meettya@acer.local" />
+<link rev="made" href="mailto:meettya@travelmate.local" />
 </head>
 
 <body style="background-color: white">
@@ -20,9 +20,10 @@
 	<li><a href="#version">VERSION</a></li>
 	<li><a href="#synopsis">SYNOPSIS</a></li>
 	<li><a href="#description">DESCRIPTION</a></li>
+	<li><a href="#export">EXPORT</a></li>
+	<li><a href="#see_also">SEE ALSO</a></li>
 	<li><a href="#autor">AUTOR</a></li>
 	<li><a href="#bugs">BUGS</a></li>
-	<li><a href="#see_also">SEE ALSO</a></li>
 	<li><a href="#copyright">COPYRIGHT</a></li>
 	<li><a href="#license">LICENSE</a></li>
 </ul>
@@ -30,14 +31,14 @@
 <hr name="index" />
 </div>
 <!-- INDEX END -->
-<hr />
+
 <h1><a name="name">NAME</a></h1>
-<p>Botox - simple implementation of Modern Object Constructor with accessor, prototyping and default-filling of inheritanced values.</p>
+<p>Botox - simple implementation of Modern Object Constructor with accessor, prototyping and default-settings of inheritanced values.</p>
 <p>
 </p>
 <hr />
 <h1><a name="version">VERSION</a></h1>
-<p><strong>$VERSION 0.9.9</strong></p>
+<p><strong>$VERSION 0.9.9_6</strong></p>
 <p>
 </p>
 <hr />
@@ -51,9 +52,8 @@
   # prop1_ro ISA 'write-protected' &amp;&amp; prop2 ISA 'public'
   # and seting default value for each other
   
-  sub _prototype_{ 'prop1_ro' =&gt; 1 , 'prop2' =&gt; 'abcde' }; 
-  
-  # OR sub _prototype_{ return {'prop1_ro' =&gt; 1 , 'prop2' =&gt; 'abcde'} };</pre>
+  # strictly named constant PROTOTYPE !
+  use constant PROTOTYPE =&gt; { 'prop1_ro' =&gt; 1 , 'prop2' =&gt; 'abcde' };</pre>
 <p>
 </p>
 <hr />
@@ -65,7 +65,12 @@
         package Parent;</pre>
 <pre>
         use Botox qw(new);
-        sub _prototype_{ 'prop1_ro' =&gt; 1 , 'prop2' =&gt; 'abcde' };
+        
+        # strictly named constant PROTOTYPE !
+        use constant PROTOTYPE =&gt; {
+                'prop1_ro' =&gt; 1 ,
+                'prop2' =&gt; 'abcde'
+                };
         
         sub show_prop1{ # It`s poinlessly - indeed property IS A accessor itself
                 my ( $self ) = @_;
@@ -120,12 +125,11 @@
         package Child;  
         use base 'Parent';</pre>
 <pre>
-        sub _prototype_{ 
-                                return {'prop1' =&gt; 48,
-                                                'prop5' =&gt; 55 , 
-                                                'prop8_ro' =&gt; 'tetete'
-                                                };
-        };
+        use constant PROTOTYPE =&gt; {
+                            'prop1' =&gt; 48,
+                            'prop5' =&gt; 55 , 
+                            'prop8_ro' =&gt; 'tetete'
+                            };
         1;</pre>
 <p>В наследство мы получим ВСЕ методы Parent (что ожидаемо) и ВСЕ дефолтные свойства Parent (что неожиданно), и это правильная вещь.
 Дефолтные значения И свойства доступа прототипа могут переопределяться в потомке, перезаписывая данные.</p>
@@ -175,6 +179,16 @@
 <p>
 </p>
 <hr />
+<h1><a name="export">EXPORT</a></h1>
+<p>Nothing by default.</p>
+<p>
+</p>
+<hr />
+<h1><a name="see_also">SEE ALSO</a></h1>
+<p>Moose, Mouse, Class::Accessor</p>
+<p>
+</p>
+<hr />
 <h1><a name="autor">AUTOR</a></h1>
 <p>Meettya &lt;<em><a href="mailto:meettya@gmail.com">meettya@gmail.com</a></em>&gt;</p>
 <p>
@@ -182,11 +196,6 @@
 <hr />
 <h1><a name="bugs">BUGS</a></h1>
 <p>Вероятно даже в таком объеме кода могут быть баги. Пожалуйста, сообщайте мне об их наличии по указаному e-mail или любым иным способом.</p>
-<p>
-</p>
-<hr />
-<h1><a name="see_also">SEE ALSO</a></h1>
-<p>Moose, Mouse, Class::Accessor</p>
 <p>
 </p>
 <hr />

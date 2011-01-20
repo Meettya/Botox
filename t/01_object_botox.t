@@ -9,9 +9,10 @@ use Test::More qw( no_plan );
 
 	use Object::Botox qw(new);
 
-	sub _prototype_{	
-			return {'prop1_ro' => 1 , 'prop2' => 'abcde' };
-	}
+	use constant PROTOTYPE => {
+		'prop1_ro' => 1 ,
+		'prop2' => 'abcde'
+	};
 	
 	sub show_prop1{ # It`s poinlessly - indeed property IS A accessor itself
 		my ( $self ) = @_;
@@ -36,12 +37,11 @@ use Test::More qw( no_plan );
 	
 	use base 'Parent';
 	
-	sub _prototype_{	
-					return {'prop1_ro' => 44,
-							'prop5' => 55,
-							'prop8_ro' => 'tetete'};
-	}
-
+	use constant PROTOTYPE => {
+		'prop1_ro' => 44,
+		'prop5' => 55,
+		'prop8_ro' => 'tetete'
+	};
 	
 	my $make_test = sub {	
 		my ( $self, $i ) = @_ ;		
@@ -100,23 +100,3 @@ use Test::More qw( no_plan );
 
 	1;
 }
-
-
-{ package ErrOne;
-	use Object::Botox qw(new);
-		sub _prototype_{ 'prop3_1' };
-	1;
-}
-
-{ package ErrTwo;
-	use Object::Botox qw(new);
-		sub _prototype_{ 'prop3_1' => 33, 'prop3_2' };
-	1;
-}
-	
-package main;
-
-
-ok( !eval{ ErrOne->new()} && $@ , "Single proto error cached \n".$@ );
-
-ok( !eval{ ErrTwo->new()} && $@ , "Odd element proto error cached \n".$@ );

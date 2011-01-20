@@ -1,10 +1,10 @@
 NAME
 
-Botox - simple implementation of Modern Object Constructor with accessor, prototyping and default-filling of inheritanced values.
+Botox - simple implementation of Modern Object Constructor with accessor, prototyping and default-settings of inheritanced values.
 
 VERSION
 
-$VERSION 0.9.9
+$VERSION 0.9.9_6
 
 SYNOPSIS
 
@@ -17,9 +17,8 @@ Botox предназначен для создания объектов с пр�
   # prop1_ro ISA 'write-protected' && prop2 ISA 'public'
   # and seting default value for each other
   
-  sub _prototype_{ 'prop1_ro' => 1 , 'prop2' => 'abcde' }; 
-  
-  # OR sub _prototype_{ return {'prop1_ro' => 1 , 'prop2' => 'abcde'} };
+  # strictly named constant PROTOTYPE !
+  use constant PROTOTYPE => { 'prop1_ro' => 1 , 'prop2' => 'abcde' };
 DESCRIPTION
 
 Botox - простой абстрактный конструктор, дающий возможность создавать объекты по прототипу и управлять их свойствами: write-protected или public. Кроме того он позволяет проставить свойствам значения по умолчанию (как в прототипе, так и при создании объекта).
@@ -29,7 +28,12 @@ Botox - простой абстрактный конструктор, дающи
 
         package Parent;
         use Botox qw(new);
-        sub _prototype_{ 'prop1_ro' => 1 , 'prop2' => 'abcde' };
+        
+        # strictly named constant PROTOTYPE !
+        use constant PROTOTYPE => {
+                'prop1_ro' => 1 ,
+                'prop2' => 'abcde'
+                };
         
         sub show_prop1{ # It`s poinlessly - indeed property IS A accessor itself
                 my ( $self ) = @_;
@@ -79,12 +83,11 @@ Botox - простой абстрактный конструктор, дающи
 
         package Child;  
         use base 'Parent';
-        sub _prototype_{ 
-                         return {'prop1' => 48,
-								'prop5' => 55 , 
-								'prop8_ro' => 'tetete'
-								};
-        };
+        use constant PROTOTYPE => {
+                            'prop1' => 48,
+                            'prop5' => 55 , 
+                            'prop8_ro' => 'tetete'
+                            };
         1;
 В наследство мы получим ВСЕ методы Parent (что ожидаемо) и ВСЕ дефолтные свойства Parent (что неожиданно), и это правильная вещь. Дефолтные значения И свойства доступа прототипа могут переопределяться в потомке, перезаписывая данные.
 
@@ -128,6 +131,14 @@ Botox - простой абстрактный конструктор, дающи
                }, 'Child' );
 При создании объекта возможно задавать значения как rw так и ro свойств(что логично). Попытка задать значение несуществующего свойства даст ошибку.
 
+EXPORT
+
+Nothing by default.
+
+SEE ALSO
+
+Moose, Mouse, Class::Accessor
+
 AUTOR
 
 Meettya <meettya@gmail.com>
@@ -135,10 +146,6 @@ Meettya <meettya@gmail.com>
 BUGS
 
 Вероятно даже в таком объеме кода могут быть баги. Пожалуйста, сообщайте мне об их наличии по указаному e-mail или любым иным способом.
-
-SEE ALSO
-
-Moose, Mouse, Class::Accessor
 
 COPYRIGHT
 

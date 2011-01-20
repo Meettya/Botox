@@ -1,23 +1,34 @@
 package Object::Botox;
 
+use 5.008;
 use strict;
 use warnings;
 
-our $VERSION = 0.9.9;
+our $VERSION = 0.9.9_6;
 
 use Exporter qw( import );
 our @EXPORT_OK = qw( new );
 
-use autouse 'Carp' => qw(carp croak);
+use constant 1.01;
 use MRO::Compat qw( get_linear_isa );
 
 my ( $create_accessor, $prototyping, $setup );
 
-my $err_text =	[
+my $err_text =  [
 		qq(Can`t change RO properties |%s| to |%s| in object %s from %s at %s line %d\n),
 		qq(Haven`t properties |%s|, can't set to |%s| in object %s from %s at %s line %d\n),
-		qq(Odd number of elements in class prototype |%s| from %s at %s line %d\n),
-				];
+		];
+
+=nd
+Method: new (public)
+	конструктор с прототипированием и инициализацией
+Parameters: 
+	$invocant - сам объект или класс
+Returns: 
+	$self - созданный объект
+Explain:
+	расширенный конструктор
+=cut
 
 sub new{
     my $invocant = shift;
@@ -43,35 +54,27 @@ Explain:
 $prototyping = sub{
 	
 	my $self = shift;
-	my $class_list = mro::get_linear_isa( ref $self );	
+	my $class_list = mro::get_linear_isa( ref $self );
 	# it`s for exist properies ( we are allow redefine, keeping highest )
-	my %seen_prop;	
+	my %seen_prop;
 
 	foreach my $class ( @$class_list ){
-
+            
 		# next if haven`t prototype
-		next unless ( $class->can('_prototype_') );		
-		my ( $proto, @proto_list ) = $class->_prototype_();
-		
-		next unless ( defined $proto );
-		
-		# if mistyping in prototype
-		while ( ref $proto ne 'HASH' && 
-					( ! @proto_list || ! ( @proto_list % 2 ) ) ){
-			die sprintf $err_text->[2], $class, caller(0);
-		}
-		
-		$proto = {$proto, @proto_list} if ( @proto_list );
+		next unless ( $constant::declared{$class."::PROTOTYPE"} );
+ 
+		my $proto = $class->PROTOTYPE();
+		next unless ( ref $proto eq 'HASH' );
 
 		# or if we are having prototype - use it !		
-		for ( reverse keys %$proto ) { # anyway we are need some order, isn`t it?		
+		for ( reverse keys %$proto ) { # anyway we are need some order, isn`t it?
 			
-			my ( $field, $ro ) = /^(.+)_(r[ow])$/ ? ( $1, $2 ) : $_ ;			
-			next while ( $seen_prop{$field}++ );		
-			&$create_accessor( $self, $field, $ro );		
+			my ( $field, $ro ) = /^(.+)_(r[ow])$/ ? ( $1, $2 ) : $_ ;
+			next while ( $seen_prop{$field}++ );
+			&$create_accessor( $self, $field, defined $ro && $ro eq 'ro' );
 			$self->$field( $proto->{$_} );
 			
-		}	
+		}
 	}
 };
 
@@ -81,7 +84,7 @@ Method: :create_accessor (private)
 Parameters: 
 	$class	- класс объекта
 	$field	- имя свойста
-	$ro		- тип свойства : [ ro|rw|undef ]
+	$ro		- тип свойства : [ 1|undef ]
 Returns: 
 	void
 =cut
@@ -90,21 +93,18 @@ $create_accessor = sub{
 	my $class = ref shift;
 	my ( $field, $ro ) = @_ ;
 	
-	my $slot = "$class\::$field"; 	# inject sub to invocant package space
-	no strict 'refs';          		# So symbolic ref to typeglob works.
-	return if ( *$slot{CODE} );		# don`t redefine ours closures
+	my $slot = "$class\::$field"; # inject sub to invocant package space
+	no strict 'refs';             # So symbolic ref to typeglob works.
+	return if ( *$slot{CODE} );   # don`t redefine ours closures
 	
-	*$slot = sub {					# or create closures
-		my $self = shift;		
-		return $self->{$slot} unless ( @_ );						
-		if ( defined $ro && $ro eq 'ro' &&
-			  !( caller eq ref $self || caller eq __PACKAGE__ ) ){				
-					die sprintf $err_text->[0], $field, shift, ref $self, caller;
+	*$slot = sub {                # or create closures
+		my $self = shift;
+		return $self->{$slot} unless ( @_ );
+		if ( $ro && !( caller eq ref $self || caller eq __PACKAGE__ ) ){
+			die sprintf $err_text->[0], $field, shift, ref $self, caller;
 		}
-		else {
-			return $self->{$slot} = shift;
-		}
-	};	
+		return $self->{$slot} = shift;
+	};
 
 };
 
@@ -140,11 +140,11 @@ __END__
 
 =head1 NAME
 
-Botox - simple implementation of Modern Object Constructor with accessor, prototyping and default-filling of inheritanced values.
+Botox - simple implementation of Modern Object Constructor with accessor, prototyping and default-settings of inheritanced values.
 
 =head1 VERSION
 
-B<$VERSION 0.9.8>
+B<$VERSION 0.9.9_6>
 
 =head1 SYNOPSIS
 
@@ -157,10 +157,8 @@ Botox предназначен для создания объектов с пр�
   # prop1_ro ISA 'write-protected' && prop2 ISA 'public'
   # and seting default value for each other
   
-  sub _prototype_{ 'prop1_ro' => 1 , 'prop2' => 'abcde' }; 
-  
-  # OR sub _prototype_{ return {'prop1_ro' => 1 , 'prop2' => 'abcde'} }; 
-
+  # strictly named constant PROTOTYPE !
+  use constant PROTOTYPE => { 'prop1_ro' => 1 , 'prop2' => 'abcde' }; 
 
 =head1 DESCRIPTION
 
@@ -171,7 +169,12 @@ Botox - простой абстрактный конструктор, дающи
 	package Parent;
 
 	use Botox qw(new);
-	sub _prototype_{ 'prop1_ro' => 1 , 'prop2' => 'abcde' };
+        
+        # strictly named constant PROTOTYPE !
+	use constant PROTOTYPE => {
+                'prop1_ro' => 1 ,
+                'prop2' => 'abcde'
+                };
 	
 	sub show_prop1{ # It`s poinlessly - indeed property IS A accessor itself
 		my ( $self ) = @_;
@@ -234,12 +237,11 @@ Botox - простой абстрактный конструктор, дающи
 	package Child;	
 	use base 'Parent';
 
-	sub _prototype_{ 
-				return {'prop1' => 48,
-						'prop5' => 55 , 
-						'prop8_ro' => 'tetete'
-						};
-	};
+	use constant PROTOTYPE => {
+                            'prop1' => 48,
+			    'prop5' => 55 , 
+			    'prop8_ro' => 'tetete'
+			    };
 	1;
 
 В наследство мы получим ВСЕ методы Parent (что ожидаемо) и ВСЕ дефолтные свойства Parent (что неожиданно), и это правильная вещь.
@@ -293,6 +295,14 @@ Botox - простой абстрактный конструктор, дающи
 При создании объекта возможно задавать значения как rw так и ro свойств(что логично).
 Попытка задать значение несуществующего свойства даст ошибку.
 
+=head1 EXPORT
+
+Nothing by default.
+
+=head1 SEE ALSO
+
+Moose, Mouse, Class::Accessor
+
 =head1 AUTOR	
 
 Meettya <L<meettya@gmail.com>>
@@ -300,10 +310,6 @@ Meettya <L<meettya@gmail.com>>
 =head1 BUGS
 
 Вероятно даже в таком объеме кода могут быть баги. Пожалуйста, сообщайте мне об их наличии по указаному e-mail или любым иным способом.
-
-=head1 SEE ALSO
-
-Moose, Mouse, Class::Accessor
 
 =head1 COPYRIGHT
 
