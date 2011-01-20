@@ -1,12 +1,19 @@
-use 5.008;
+use strict;
+use warnings;
 use ExtUtils::MakeMaker;
-# See lib/ExtUtils/MakeMaker.pm for details of how to influence
-# the contents of the Makefile that is written.
+
 WriteMakefile(
-    NAME              => 'Object::Botox',
-    VERSION_FROM      => 'lib/Object/Botox.pm', # finds $VERSION
-    PREREQ_PM         => {}, # e.g., Module::Name => 1.1
-    ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
-      (ABSTRACT_FROM  => 'lib/Object/Botox.pm', # retrieve abstract from module
-       AUTHOR         => 'Meettya <meettya@gmail.com>') : ()),
+    NAME                => 'Object::Botox',
+    AUTHOR              => 'Meettya <meettya@gmail.com>',
+    VERSION_FROM        => 'lib/Object/Botox.pm',
+    ABSTRACT		 => 'Advanced Object constructor',
+    ($ExtUtils::MakeMaker::VERSION >= 6.3002
+      ? ('LICENSE'=> 'perl')
+      : ()),
+    PL_FILES            => {},
+    PREREQ_PM => {
+        'Test::More' => 0,
+    },
+    dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
+    clean               => { FILES => 'Object-Botox-*' },
 );

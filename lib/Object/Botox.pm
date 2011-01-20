@@ -6,137 +6,7 @@ use warnings;
 
 our $VERSION = 0.9.9_6;
 
-use Exporter qw( import );
-our @EXPORT_OK = qw( new );
 
-use constant 1.01;
-use MRO::Compat qw( get_linear_isa );
-
-my ( $create_accessor, $prototyping, $setup );
-
-my $err_text =  [
-		qq(Can`t change RO properties |%s| to |%s| in object %s from %s at %s line %d\n),
-		qq(Haven`t properties |%s|, can't set to |%s| in object %s from %s at %s line %d\n),
-		];
-
-=nd
-Method: new (public)
-	конструктор с прототипированием и инициализацией
-Parameters: 
-	$invocant - сам объект или класс
-Returns: 
-	$self - созданный объект
-Explain:
-	расширенный конструктор
-=cut
-
-sub new{
-    my $invocant = shift;
-    my $self = bless( {}, ref $invocant || $invocant ); # Object or class name 
-	&$prototyping( $self );
-	&$setup( $self, @_ ) if @_;
-	return $self;
-}
-
-=nd
-Method: :prototyping (private)
-	конструирует объект по доступным прото-свойствам, 
-	объявленным в нем самом или в родителях
-Parameters: 
-	$self - сам объект
-Returns: 
-	void
-Explain:
-	проходимся по дереву объектов, ничиная с самого объекта и
-	строим по описанию прототипа все, прибавляя ко всему свойства
-=cut
-
-$prototyping = sub{
-	
-	my $self = shift;
-	my $class_list = mro::get_linear_isa( ref $self );
-	# it`s for exist properies ( we are allow redefine, keeping highest )
-	my %seen_prop;
-
-	foreach my $class ( @$class_list ){
-            
-		# next if haven`t prototype
-		next unless ( $constant::declared{$class."::PROTOTYPE"} );
- 
-		my $proto = $class->PROTOTYPE();
-		next unless ( ref $proto eq 'HASH' );
-
-		# or if we are having prototype - use it !		
-		for ( reverse keys %$proto ) { # anyway we are need some order, isn`t it?
-			
-			my ( $field, $ro ) = /^(.+)_(r[ow])$/ ? ( $1, $2 ) : $_ ;
-			next while ( $seen_prop{$field}++ );
-			&$create_accessor( $self, $field, defined $ro && $ro eq 'ro' );
-			$self->$field( $proto->{$_} );
-			
-		}
-	}
-};
-
-=nd
-Method: :create_accessor (private)
-	делает акцессоры для объекта
-Parameters: 
-	$class	- класс объекта
-	$field	- имя свойста
-	$ro		- тип свойства : [ 1|undef ]
-Returns: 
-	void
-=cut
-
-$create_accessor = sub{
-	my $class = ref shift;
-	my ( $field, $ro ) = @_ ;
-	
-	my $slot = "$class\::$field"; # inject sub to invocant package space
-	no strict 'refs';             # So symbolic ref to typeglob works.
-	return if ( *$slot{CODE} );   # don`t redefine ours closures
-	
-	*$slot = sub {                # or create closures
-		my $self = shift;
-		return $self->{$slot} unless ( @_ );
-		if ( $ro && !( caller eq ref $self || caller eq __PACKAGE__ ) ){
-			die sprintf $err_text->[0], $field, shift, ref $self, caller;
-		}
-		return $self->{$slot} = shift;
-	};
-
-};
-
-=nd
-Method: :setup (private)
-	устанавливает свойста объекта при его создании
-Parameters: 
-	$self - сам объект
-	@_ - свойства для установки:
-		(prop1=>aaa,prop2=>bbb) AND ({prop1=>aaa,prop2=>bbb}) ARE allowed
-Returns: 
-	void
-=cut
-
-$setup = sub{
-	my $self = shift;
-	my %prop = ref $_[0] eq 'HASH' ? %{$_[0]} : @_ ; 
-	
-	map { $self->can( $_ ) ? $self->$_( $prop{$_} ) : 
-			die sprintf $err_text->[1], $_, $prop{$_}, ref $self, caller(1) } 
-					keys %prop;
-
-};
-
-1;
-
-
-__END__
-
-=encoding utf-8
-
-=pod
 
 =head1 NAME
 
@@ -294,6 +164,146 @@ Botox - простой абстрактный конструктор, дающи
 
 При создании объекта возможно задавать значения как rw так и ro свойств(что логично).
 Попытка задать значение несуществующего свойства даст ошибку.
+
+=cut
+
+use Exporter qw( import );
+our @EXPORT_OK = qw( new );
+
+use constant 1.01;
+use MRO::Compat qw( get_linear_isa );
+
+my ( $create_accessor, $prototyping, $setup );
+
+my $err_text =  [
+		qq(Can`t change RO properties |%s| to |%s| in object %s from %s at %s line %d\n),
+		qq(Haven`t properties |%s|, can't set to |%s| in object %s from %s at %s line %d\n),
+		];
+
+
+=head2 Methods
+
+=over
+
+=item new (public)
+
+new() - создает объект с прототипированием и инициализацией
+
+=cut
+
+sub new{
+    my $invocant = shift;
+    my $self = bless( {}, ref $invocant || $invocant ); # Object or class name 
+	&$prototyping( $self );
+	&$setup( $self, @_ ) if @_;
+	return $self;
+}
+
+=back
+
+=begin comment prototyping (private)
+	конструирует объект по доступным прото-свойствам, объявленным в нем самом или в родителях
+Parameters: 
+	$self - сам объект
+Returns: 
+	void
+Explain:
+	проходимся по дереву объектов, ничиная с самого объекта и
+	строим по описанию прототипа все, прибавляя ко всему свойства
+
+=end comment
+
+=cut 
+
+
+$prototyping = sub{
+	
+	my $self = shift;
+	my $class_list = mro::get_linear_isa( ref $self );
+	# it`s for exist properies ( we are allow redefine, keeping highest )
+	my %seen_prop;
+
+	foreach my $class ( @$class_list ){
+            
+		# next if haven`t prototype
+		next unless ( $constant::declared{$class."::PROTOTYPE"} );
+ 
+		my $proto = $class->PROTOTYPE();
+		next unless ( ref $proto eq 'HASH' );
+
+		# or if we are having prototype - use it !		
+		for ( reverse keys %$proto ) { # anyway we are need some order, isn`t it?
+			
+			my ( $field, $ro ) = /^(.+)_(r[ow])$/ ? ( $1, $2 ) : $_ ;
+			next while ( $seen_prop{$field}++ );
+			&$create_accessor( $self, $field, defined $ro && $ro eq 'ro' );
+			$self->$field( $proto->{$_} );
+			
+		}
+	}
+};
+
+
+=begin comment create_accessor (private)
+	создает акцессоры для объекта
+Parameters: 
+	$class	- класс объекта
+	$field	- имя свойста
+	$ro		- тип свойства : [ 1|undef ]
+Returns: 
+	void
+
+=end comment
+
+=cut
+
+$create_accessor = sub{
+	my $class = ref shift;
+	my ( $field, $ro ) = @_ ;
+	
+	my $slot = "$class\::$field"; # inject sub to invocant package space
+	no strict 'refs';             # So symbolic ref to typeglob works.
+	return if ( *$slot{CODE} );   # don`t redefine ours closures
+	
+	*$slot = sub {                # or create closures
+		my $self = shift;
+		return $self->{$slot} unless ( @_ );
+		if ( $ro && !( caller eq ref $self || caller eq __PACKAGE__ ) ){
+			die sprintf $err_text->[0], $field, shift, ref $self, caller;
+		}
+		return $self->{$slot} = shift;
+	};
+
+};
+
+=begin comment setup (private)
+	устанавливает свойста объекта при его создании
+Parameters: 
+	$self - сам объект
+	@_ - свойства для установки:
+		(prop1=>aaa,prop2=>bbb) AND ({prop1=>aaa,prop2=>bbb}) ARE allowed
+Returns: 
+	void
+
+=end comment
+
+=cut
+
+$setup = sub{
+	my $self = shift;
+	my %prop = ref $_[0] eq 'HASH' ? %{$_[0]} : @_ ; 
+	
+	map { $self->can( $_ ) ? $self->$_( $prop{$_} ) : 
+			die sprintf $err_text->[1], $_, $prop{$_}, ref $self, caller(1) } 
+					keys %prop;
+
+};
+
+1;
+
+
+__END__
+
 
 =head1 EXPORT
 

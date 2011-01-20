@@ -4,5 +4,9 @@ Makefile.PL
 MANIFEST
 README
 README.HTML
-t/01_object_botox.t
-t/02_object_botox_mi.t
+t/00-load.t
+t/01-object_botox.t
+t/02-object_botox_mi.t
+t/boilerplate.t
+t/pod-coverage.t
+t/pod.t
