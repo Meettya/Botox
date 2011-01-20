@@ -1,5 +1,3 @@
-NAME
-
 Botox - simple implementation of Modern Object Constructor with accessor, prototyping and default-settings of inheritanced values.
 
 VERSION
@@ -139,6 +137,14 @@ SEE ALSO
 
 Moose, Mouse, Class::Accessor
 
+INSTALLATION
+
+To install this module type the following:
+
+   perl Makefile.PL
+   make
+   make test
+   make install
 AUTOR
 
 Meettya <meettya@gmail.com>
