@@ -4,8 +4,7 @@ use 5.008;
 use strict;
 use warnings;
 
-our $VERSION = 0.9.9_6;
-
+our $VERSION = 0.9.9_7;
 
 
 =head1 NAME
@@ -14,7 +13,7 @@ Botox - simple implementation of Modern Object Constructor with accessor, protot
 
 =head1 VERSION
 
-B<$VERSION 0.9.9_6>
+B<$VERSION 0.9.9_7>
 
 =head1 SYNOPSIS
 
@@ -172,12 +171,13 @@ our @EXPORT_OK = qw( new );
 
 use constant 1.01;
 use MRO::Compat qw( get_linear_isa );
+use autouse 'Carp' => qw( croak );
 
 my ( $create_accessor, $prototyping, $setup );
 
 my $err_text =  [
-		qq(Can`t change RO properties |%s| to |%s| in object %s from %s at %s line %d\n),
-		qq(Haven`t properties |%s|, can't set to |%s| in object %s from %s at %s line %d\n),
+		qq(Can`t change RO properties |%s| to |%s| in object %s from %s),
+		qq(Haven`t properties |%s|, can't set to |%s| in object %s from %s),
 		];
 
 
@@ -269,7 +269,7 @@ $create_accessor = sub{
 		my $self = shift;
 		return $self->{$slot} unless ( @_ );
 		if ( $ro && !( caller eq ref $self || caller eq __PACKAGE__ ) ){
-			die sprintf $err_text->[0], $field, shift, ref $self, caller;
+			croak sprintf $err_text->[0], $field, shift, ref $self, caller;
 		}
 		return $self->{$slot} = shift;
 	};
@@ -294,7 +294,7 @@ $setup = sub{
 	my %prop = ref $_[0] eq 'HASH' ? %{$_[0]} : @_ ; 
 	
 	map { $self->can( $_ ) ? $self->$_( $prop{$_} ) : 
-			die sprintf $err_text->[1], $_, $prop{$_}, ref $self, caller(1) } 
+			croak sprintf $err_text->[1], $_, $prop{$_}, ref $self, caller(1) } 
 					keys %prop;
 
 };

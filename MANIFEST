@@ -1,6 +1,6 @@
 Changes
 lib/Object/Botox.pm
-Makefile.PL
+Build.PL
 MANIFEST
 README
 README.HTML

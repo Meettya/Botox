@@ -1,5 +1,5 @@
 Revision history for Object-Botox
 
-0.01    Date/time
-        First version, released on an unsuspecting world.
+0.9.9_7 January 21, 2011 1:09 AM
+        Fix die -> croak, fix test.
 

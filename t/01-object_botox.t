@@ -1,7 +1,7 @@
 #!/opt/local/bin/perl -w
 
 use strict;
-use lib qw(../);
+use lib qw(./lib/);
 
 use Test::More qw( no_plan );
 
@@ -48,7 +48,7 @@ use Test::More qw( no_plan );
 		main::ok($self->prop1 == 1 && $self->prop2 eq 'abcde', "Init test pass");
 		main::ok($self->show_prop1 == 1, "Read accessor test pass");
 		main::ok(! eval{ $self->prop1(4*$i) } && $@ && $self->prop1 == 1 , 
-				"Read-only property test pass");
+				"Read-only property test pass" );
 		main::ok($self->set_prop1(5*$i) && $self->prop1 == 5*$i,
 				"Write accessor method test pass");
 		main::ok($self->prop2 ne 'wxyz'.$i && $self->prop2('wxyz'.$i) 
@@ -98,5 +98,13 @@ use Test::More qw( no_plan );
 	main::is  ( $baz->child_sub, 'tetete-2', 'Second sub' );
 	main::is  ( $baz->parent_sub, '55 mutating', 'Third sub' );	
 
+	1;
+}
+
+{ package BirthToDead;
+	 
+	 main::note ('Init setup error test:');
+	 main::ok(! eval{ Child->new( prop666 => 666 ) } && $@ , 
+				"Setup missmatch catched" );
 	1;
 }

@@ -1,7 +1,7 @@
 #!/opt/local/bin/perl -w
 
 use strict;
-use lib qw(../);
+use lib qw(./lib/);
 
 use Test::More qw( no_plan );
 
