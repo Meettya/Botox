@@ -1,0 +1,8 @@
+Changes
+lib/Object/Botox.pm
+Makefile.PL
+MANIFEST
+README
+README.HTML
+t/01_object_botox.t
+t/02_object_botox_mi.t

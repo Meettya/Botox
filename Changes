@@ -1,0 +1,6 @@
+Revision history for Perl extension Object::Botox.
+
+0.01  Thu Jan 20 15:53:46 2011
+	- original version; created by h2xs 1.23 with options
+		-X -n Object::Botox
+
