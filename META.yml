@@ -1,0 +1,21 @@
+---
+abstract: 'simple implementation of Modern Object Constructor with accessor, prototyping and default-settings of inheritanced values.'
+author:
+  - 'Meettya <meettya@gmail.com>'
+build_requires:
+  Test::More: 0
+configure_requires:
+  Module::Build: 0.36
+generated_by: 'Module::Build version 0.3607'
+license: perl
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+name: Object-Botox
+provides:
+  Object::Botox:
+    file: lib/Object/Botox.pm
+    version: 0.099_8
+resources:
+  license: http://dev.perl.org/licenses/
+version: 0.099_8

@@ -4,7 +4,7 @@ use 5.008;
 use strict;
 use warnings;
 
-our $VERSION = '0.099_7';
+our $VERSION = '0.099_8';
 $VERSION = eval $VERSION;
 
 
@@ -14,7 +14,7 @@ Botox - simple implementation of Modern Object Constructor with accessor, protot
 
 =head1 VERSION
 
-B<$VERSION 0.9.9_7>
+B<$VERSION 0.099_8>
 
 =head1 SYNOPSIS
 

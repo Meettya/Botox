@@ -10,3 +10,5 @@ t/02-object_botox_mi.t
 t/boilerplate.t
 t/pod-coverage.t
 t/pod.t
+Makefile.PL
+META.yml
