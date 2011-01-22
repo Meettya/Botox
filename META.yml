@@ -16,6 +16,8 @@ provides:
   Object::Botox:
     file: lib/Object/Botox.pm
     version: 0.099_8
+requires:
+  MRO::Compat: 0
 resources:
   license: http://dev.perl.org/licenses/
 version: 0.099_8
