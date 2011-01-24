@@ -1,5 +1,10 @@
 Revision history for Object-Botox
 
+0.099_9 January 24, 2011 1:50 PM
+        Major bug fix, improve checking new() args,
+        add test and croaking for some name sub in class,
+        many minor fix.
+
 0.099_8 January 21, 2011 1:43 PM
         Minor fix, improve installer
 

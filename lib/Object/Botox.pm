@@ -4,9 +4,8 @@ use 5.008;
 use strict;
 use warnings;
 
-our $VERSION = '0.099_8';
+our $VERSION = '0.099_9';
 $VERSION = eval $VERSION;
-
 
 =head1 NAME
 
@@ -14,7 +13,7 @@ Botox - simple implementation of Modern Object Constructor with accessor, protot
 
 =head1 VERSION
 
-B<$VERSION 0.099_8>
+B<$VERSION 0.099_9>
 
 =head1 SYNOPSIS
 
@@ -171,14 +170,17 @@ use Exporter qw( import );
 our @EXPORT_OK = qw( new );
 
 use constant 1.01;
-use MRO::Compat qw( get_linear_isa );
-use autouse 'Carp' => qw( croak );
+use MRO::Compat qw( get_linear_isa ); # mro::* interface compatibility for Perls < 5.9.5
+use autouse 'Carp' => qw( croak carp );
 
 my ( $create_accessor, $prototyping, $setup );
 
 my $err_text =  [
-		qq(Can`t change RO properties |%s| to |%s| in object %s from %s),
-		qq(Haven`t properties |%s|, can't set to |%s| in object %s from %s),
+	qq(Can`t change RO property |%s| to |%s| in object %s from %s),
+	qq(Haven`t property |%s|, can't set to |%s| in object %s from %s),
+	qq(Name |%s| reserved as property, but subroutine named |%s| in class %s was founded, new\(\) method from %s aborted),
+	qq(Odd number of elements in list),
+	qq(Only list or anonymous hash are alowed in new\(\) method in object %s)
 		];
 
 
@@ -188,7 +190,7 @@ my $err_text =  [
 
 =item new (public)
 
-new() - создает объект с прототипированием и инициализацией
+new() - создает объект (на основе хеша) по прототипу и инициализирует его
 
 =cut
 
@@ -240,6 +242,11 @@ $prototyping = sub{
 			&$create_accessor( $self, $field, defined $ro && $ro eq 'ro' );
 			$self->$field( $proto->{$_} );
 			
+			# need check property are REALY setted, or user defined same named subroutine, I think
+			unless ( exists $self->{ (ref $self).'::'.$field} ){
+				croak sprintf $err_text->[2], $field, $field, ref $self, caller(1);
+			}
+			
 		}
 	}
 };
@@ -250,7 +257,7 @@ $prototyping = sub{
 Parameters: 
 	$class	- класс объекта
 	$field	- имя свойста
-	$ro		- тип свойства : [ 1|undef ]
+	$ro	- тип свойства : [ 1|undef ]
 Returns: 
 	void
 
@@ -292,11 +299,31 @@ Returns:
 
 $setup = sub{
 	my $self = shift;
-	my %prop = ref $_[0] eq 'HASH' ? %{$_[0]} : @_ ; 
+	my %prop;
 	
-	map { $self->can( $_ ) ? $self->$_( $prop{$_} ) : 
-			croak sprintf $err_text->[1], $_, $prop{$_}, ref $self, caller(1) } 
-					keys %prop;
+	if ( ref $_[0] eq 'HASH' ){
+	    %prop = %{$_[0]};
+	}
+	elsif ( ! ref $_[0] ) {
+	    unless ( $#_ % 2 ) {
+		# so, if list are odd whe are have many troubless,
+		# but for support some way as perl 'Odd number at anonimous hash'
+		carp sprintf $err_text->[3], caller(1);
+		push @_, undef;
+	    }
+	    %prop = @_ ;
+	}
+	else {
+	    croak sprintf $err_text->[4], ref $self, caller(1);
+	}
+
+	while ( my ($key, $value) = each %prop ){
+	    # if realy haven`t property in PROTOTYPE
+	    unless ( exists $self->{(ref $self).'::'.$key} ) {
+		    croak sprintf $err_text->[1], $key, $value, ref $self, caller(1);
+	    }
+	    $self->$key( $value );
+	}
 
 };
 
