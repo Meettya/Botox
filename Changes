@@ -1,5 +1,9 @@
 Revision history for Object-Botox
 
+0.099_91 January 30, 2011 10:04 PM
+	Major fix - method |new| now exported by default.
+	Minor fix - setting value return object, instead of value
+
 0.099_9 January 24, 2011 1:50 PM
         Major bug fix, improve checking new() args,
         add test and croaking for some name sub in class,

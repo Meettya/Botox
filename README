@@ -2,7 +2,7 @@ Botox - simple implementation of Modern Object Constructor with accessor, protot
 
 VERSION
 
-$VERSION 0.099_9
+$VERSION 0.099_91
 
 SYNOPSIS
 
@@ -136,11 +136,11 @@ new() - создает объект с прототипированием и и�
 
 EXPORT
 
-Nothing by default.
+method |new|
 
 SEE ALSO
 
-Moose, Mouse, Class::Accessor
+Moose, Mouse, Class::Accessor, Class::XSAccessor
 
 INSTALLATION
 

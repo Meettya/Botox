@@ -4,7 +4,7 @@ use 5.008;
 use strict;
 use warnings;
 
-our $VERSION = '0.099_9';
+our $VERSION = '0.099_91';
 $VERSION = eval $VERSION;
 
 =head1 NAME
@@ -164,10 +164,11 @@ Botox - простой абстрактный конструктор, дающи
 При создании объекта возможно задавать значения как rw так и ro свойств(что логично).
 Попытка задать значение несуществующего свойства даст ошибку.
 
-=cut
+При успешном присвоении значения результатом операции является сам объект, т.е. можно создавать цепочки присвоений, типа
+    $baz->prop1(88)->prop2('loreum ipsum');
+Вероятно это может пригодится.
 
-use Exporter qw( import );
-our @EXPORT_OK = qw( new );
+=cut
 
 use constant 1.01;
 use MRO::Compat qw( get_linear_isa ); # mro::* interface compatibility for Perls < 5.9.5
@@ -203,6 +204,24 @@ sub new{
 }
 
 =back
+
+=begin comment import(protected)
+    
+Parameters: 
+    @_ - calling args
+Returns: 
+    void
+Explain:
+    - имплантирует в вызывающий метод конструктор new (не думаю, что нужны переименования)
+
+=end comment
+
+=cut
+
+sub import{
+    no strict 'refs';
+    *{+caller.'::new'} = \&new;
+}
 
 =begin comment prototyping (private)
 	конструирует объект по доступным прото-свойствам, объявленным в нем самом или в родителях
@@ -279,7 +298,8 @@ $create_accessor = sub{
 		if ( $ro && !( caller eq ref $self || caller eq __PACKAGE__ ) ){
 			croak sprintf $err_text->[0], $field, shift, ref $self, caller;
 		}
-		return $self->{$slot} = shift;
+		$self->{$slot} = shift;
+		return $self;	      # yap! for chaining
 	};
 
 };
@@ -335,11 +355,11 @@ __END__
 
 =head1 EXPORT
 
-Nothing by default.
+method |new|
 
 =head1 SEE ALSO
 
-Moose, Mouse, Class::Accessor
+Moose, Mouse, Class::Accessor, Class::XSAccessor
 
 =head1 INSTALLATION
 
