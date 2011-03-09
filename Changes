@@ -1,5 +1,9 @@
 Revision history for Object-Botox
 
+1.01	March 10, 2011 12:38 AM
+	Some minor fix.
+	Freeze API
+
 0.099_91 January 30, 2011 10:04 PM
 	Major fix - method |new| now exported by default.
 	Minor fix - setting value return object, instead of value

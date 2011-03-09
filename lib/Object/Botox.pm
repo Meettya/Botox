@@ -4,7 +4,7 @@ use 5.008;
 use strict;
 use warnings;
 
-our $VERSION = '0.099_91';
+our $VERSION = '1.01';
 $VERSION = eval $VERSION;
 
 =head1 NAME
@@ -13,7 +13,7 @@ Botox - simple implementation of Modern Object Constructor with accessor, protot
 
 =head1 VERSION
 
-B<$VERSION 0.099_9>
+B<$VERSION 1.01>
 
 =head1 SYNOPSIS
 
@@ -198,8 +198,8 @@ new() - создает объект (на основе хеша) по прото
 sub new{
     my $invocant = shift;
     my $self = bless( {}, ref $invocant || $invocant ); # Object or class name 
-	&$prototyping( $self );
-	&$setup( $self, @_ ) if @_;
+	$prototyping->( $self );
+	$setup->( $self, @_ ) if @_;
 	return $self;
 }
 
@@ -258,7 +258,7 @@ $prototyping = sub{
 			
 			my ( $field, $ro ) = /^(.+)_(r[ow])$/ ? ( $1, $2 ) : $_ ;
 			next while ( $seen_prop{$field}++ );
-			&$create_accessor( $self, $field, defined $ro && $ro eq 'ro' );
+			$create_accessor->( $self, $field, defined $ro && $ro eq 'ro' );
 			$self->$field( $proto->{$_} );
 			
 			# need check property are REALY setted, or user defined same named subroutine, I think
