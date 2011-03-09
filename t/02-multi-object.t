@@ -18,10 +18,10 @@ my $test_prop = {
 
 subtest 'Data matching' => sub {	
 	plan tests => 6;
-	map{ is( $test_prop->{$_}, $baz->$_(), "Prop: $_ match!" ) } keys %$test_prop;
+	map{ is( $test_prop->{$_}, $baz->$_, "Prop: $_ match!" ) } keys %$test_prop;
 };
 
-ok( $baz->prop1_1('pi') && 'pi' eq $baz->prop1_1(), 
+ok( $baz->prop1_1('pi') && 'pi' eq $baz->prop1_1, 
 			'RW-prop inheritance worked');
 ok( !eval{ $baz->prop2_1(44) } && $@ && $baz->prop2_1 == 33, 
 			"RO-prop inheritance worked");
