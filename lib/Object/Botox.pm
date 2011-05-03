@@ -4,7 +4,7 @@ use 5.008;
 use strict;
 use warnings;
 
-our $VERSION = '1.01';
+our $VERSION = '1.06';
 $VERSION = eval $VERSION;
 
 =head1 NAME
@@ -13,14 +13,14 @@ Botox - simple implementation of Modern Object Constructor with accessor, protot
 
 =head1 VERSION
 
-B<$VERSION 1.01>
+B<$VERSION 1.06>
 
 =head1 SYNOPSIS
 
 Botox предназначен для создания объектов с прототипируемыми управляемыми по доступности свойствами: write-protected или public И возможности установки этим свойствам дефолтных значений (как в прототипе, так и при создании объекта). Построение цепочки наследования производится на основе ::mro, методы и свойства переопределяются в потомке.
 
   package Parent;
-  use Botox qw(new); # yes, we are got constructor
+  use Botox; # yes, we are got constructor
   
   # default properties for ANY object of `Parent` class:
   # prop1_ro ISA 'write-protected' && prop2 ISA 'public'
@@ -37,9 +37,9 @@ Botox - простой абстрактный конструктор, дающи
    
 	package Parent;
 
-	use Botox qw(new);
+	use Botox;
         
-        # strictly named constant PROTOTYPE !
+    # strictly named constant PROTOTYPE !
 	use constant PROTOTYPE => {
                 'prop1_ro' => 1 ,
                 'prop2' => 'abcde'
@@ -107,7 +107,7 @@ Botox - простой абстрактный конструктор, дающи
 	use base 'Parent';
 
 	use constant PROTOTYPE => {
-                            'prop1' => 48,
+                'prop1' => 48,
 			    'prop5' => 55 , 
 			    'prop8_ro' => 'tetete'
 			    };
@@ -174,7 +174,9 @@ use constant 1.01;
 use MRO::Compat qw( get_linear_isa ); # mro::* interface compatibility for Perls < 5.9.5
 use autouse 'Carp' => qw( croak carp );
 
-my ( $create_accessor, $prototyping, $setup );
+my ( $create_accessor, $prototyping, $setup, $pre_set );
+
+my %properties_cache; # inside-out styled chache
 
 my $err_text =  [
 	qq(Can`t change RO property |%s| to |%s| in object %s from %s),
@@ -198,7 +200,7 @@ new() - создает объект (на основе хеша) по прото
 sub new{
     my $invocant = shift;
     my $self = bless( {}, ref $invocant || $invocant ); # Object or class name 
-	$prototyping->( $self );
+	exists $properties_cache{ ref $self } ? $pre_set->( $self ) : $prototyping->( $self );
 	$setup->( $self, @_ ) if @_;
 	return $self;
 }
@@ -221,7 +223,33 @@ Explain:
 sub import{
     no strict 'refs';
     *{+caller.'::new'} = \&new;
+    
 }
+
+=begin comment pre_set (private)
+	инициирует объект прото-свойствами, если в кеше уже был объект этого класса
+Parameters: 
+	$self - сам объект
+Returns: 
+	void
+Explain:
+	берем список свойств из кеша и делаем инициацию значениями.
+	акцессоры у нас УЖЕ есть, нет никакого смысла повторно мутить всю бодягу
+
+=end comment
+
+=cut 
+
+
+$pre_set = sub{
+
+	my $self = shift;		
+	while ( my ($key, $value) = each %{$properties_cache{ ref $self }} ){		
+		$self->$key($value);
+	};
+
+};
+
 
 =begin comment prototyping (private)
 	конструирует объект по доступным прото-свойствам, объявленным в нем самом или в родителях
@@ -241,7 +269,7 @@ Explain:
 $prototyping = sub{
 	
 	my $self = shift;
-	my $class_list = mro::get_linear_isa( ref $self );
+	my $class_list = mro::get_linear_isa( ref $self );	
 	# it`s for exist properies ( we are allow redefine, keeping highest )
 	my %seen_prop;
 
@@ -257,7 +285,9 @@ $prototyping = sub{
 		for ( reverse keys %$proto ) { # anyway we are need some order, isn`t it?
 			
 			my ( $field, $ro ) = /^(.+)_(r[ow])$/ ? ( $1, $2 ) : $_ ;
-			next while ( $seen_prop{$field}++ );
+			next if ( exists $seen_prop{$field} );
+			$seen_prop{$field} = $proto->{$_}; # for caching
+			
 			$create_accessor->( $self, $field, defined $ro && $ro eq 'ro' );
 			$self->$field( $proto->{$_} );
 			
@@ -268,6 +298,8 @@ $prototyping = sub{
 			
 		}
 	}
+	
+	$properties_cache{ ref $self } = \%seen_prop; # for caching
 };
 
 
@@ -292,15 +324,15 @@ $create_accessor = sub{
 	no strict 'refs';             # So symbolic ref to typeglob works.
 	return if ( *$slot{CODE} );   # don`t redefine ours closures
 	
-	*$slot = sub {                # or create closures
-		my $self = shift;
-		return $self->{$slot} unless ( @_ );
-		if ( $ro && !( caller eq ref $self || caller eq __PACKAGE__ ) ){
-			croak sprintf $err_text->[0], $field, shift, ref $self, caller;
-		}
-		$self->{$slot} = shift;
-		return $self;	      # yap! for chaining
-	};
+	*$slot = sub {      		  # or create closures
+			my $self = shift;
+			return $self->{$slot} unless ( @_ );
+			if ( $ro && !( caller eq ref $self || caller eq __PACKAGE__ ) ){
+				croak sprintf $err_text->[0], $field, shift, ref $self, caller;
+			}
+			$self->{$slot} = shift;
+			return $self;	      # yap! for chaining
+		};
 
 };
 
@@ -339,7 +371,7 @@ $setup = sub{
 
 	while ( my ($key, $value) = each %prop ){
 	    # if realy haven`t property in PROTOTYPE
-	    unless ( exists $self->{(ref $self).'::'.$key} ) {
+	    unless ( exists ${$properties_cache{ ref $self }}{$key} ) {
 		    croak sprintf $err_text->[1], $key, $value, ref $self, caller(1);
 	    }
 	    $self->$key( $value );
@@ -372,7 +404,7 @@ To install this module type the following:
 
 =head1 AUTOR	
 
-Meettya <L<meettya@gmail.com>>
+Meettya <L<meettya@cpan.org>>
 
 =head1 BUGS
 

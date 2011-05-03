@@ -3,7 +3,9 @@
 use strict;
 use lib qw(./lib/);
 
-use Test::More qw( no_plan );
+use Test::More;
+
+plan tests => 6;
 
 my $baz = main::new_ok( 'Children' => [], 'Object' );
 
@@ -26,10 +28,20 @@ ok( $baz->prop1_1('pi') && 'pi' eq $baz->prop1_1,
 ok( !eval{ $baz->prop2_1(44) } && $@ && $baz->prop2_1 == 33, 
 			"RO-prop inheritance worked");
 
+note('Second object');
+
+my $bar = main::new_ok( 'Children' => [], 'Object' );
+
+subtest 'Data matching' => sub {	
+	plan tests => 6;
+	map{ is( $test_prop->{$_}, $bar->$_, "Prop: $_ match!" ) } keys %$test_prop;
+};
+
+
 1;
 
 { package First;	
-	use Object::Botox qw(new);
+	use Object::Botox;
 	use constant PROTOTYPE => {
 			'prop1_1_ro' => 1 ,
 			'prop1_2' => 'abcde'
@@ -38,7 +50,7 @@ ok( !eval{ $baz->prop2_1(44) } && $@ && $baz->prop2_1 == 33,
 }
 
 { package Second;	
-	use Object::Botox qw(new);
+	use Object::Botox;
 	use constant PROTOTYPE => {
 			'prop2_1_ro' => 33 ,
 			'prop2_2' => 'ddfdff'
@@ -47,7 +59,7 @@ ok( !eval{ $baz->prop2_1(44) } && $@ && $baz->prop2_1 == 33,
 }
 
 { package Third;
-	use Object::Botox qw(new);
+	use Object::Botox;
 	use constant PROTOTYPE => {	
 		'prop3_1' => 3434 ,
 		'prop3_2' => 'fddfldflk'
@@ -56,7 +68,7 @@ ok( !eval{ $baz->prop2_1(44) } && $@ && $baz->prop2_1 == 33,
 }
 
 { package Fourth;
-	use Object::Botox qw(new);
+	use Object::Botox;
 	use constant PROTOTYPE => {
 			'prop3_1' => 33
 	};
@@ -66,7 +78,7 @@ ok( !eval{ $baz->prop2_1(44) } && $@ && $baz->prop2_1 == 33,
 
 # to test no PROTOTYPE;
 { package Fifthg;
-	use Object::Botox qw(new);
+	use Object::Botox;
 	1;
 }
 

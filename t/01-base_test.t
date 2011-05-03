@@ -64,6 +64,7 @@ use Test::More qw( no_plan );
 	
 	main::note ('First object test:');
 	my $foo = main::new_ok( 'Parent' => [] ,"First object create" );
+	
 	&$make_test($foo,1);
 
 	main::note ('Second object test:');
@@ -71,7 +72,7 @@ use Test::More qw( no_plan );
 	&$make_test($bar,2);
 	main::note ("Persistent data test:");
 	&$persistent_test($foo);
-
+	
 	sub child_sub{
 		my $self = shift;
 		return $self->prop8.'-2';
@@ -97,7 +98,7 @@ use Test::More qw( no_plan );
 	main::is  ( $baz->show_prop1, '888888', 'First sub' );
 	main::is  ( $baz->child_sub, 'tetete-2', 'Second sub' );
 	main::is  ( $baz->parent_sub, '55 mutating', 'Third sub' );	
-
+	
 	1;
 }
 
@@ -106,5 +107,12 @@ use Test::More qw( no_plan );
 	 main::note ('Init setup error test:');
 	 main::ok(! eval{ Child->new( prop666 => 666 ) } && $@ , 
 				"Setup missmatch catched" );
+	1;
+}
+
+{ package EmptyCreate;
+	 
+	 main::note ('Empty object creation:');
+	 main::new_ok ( 'Child' => [] , 'Empty object' );
 	1;
 }

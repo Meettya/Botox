@@ -1,5 +1,9 @@
 Revision history for Object-Botox
 
+1.03	May 3, 2011 10:00 AM
+	Improve speed by adding chache for object prototype.
+	Minor fix test & documrntation
+
 1.01	March 10, 2011 12:38 AM
 	Some minor fix.
 	Freeze API
